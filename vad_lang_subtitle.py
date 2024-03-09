@@ -161,6 +161,7 @@ def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, det
         result = whisper_model.transcribe(temp_file.name, language=detected_language, word_timestamps=True)
         transcription = result["text"]
         segments = result["segments"]
+        pprint(result)
         # pprint(result)
     except Exception as e:
         print(f"Error transcribing segment: {e}")
