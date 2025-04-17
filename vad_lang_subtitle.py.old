@@ -126,7 +126,7 @@ def clean_timestamps(speech_timestamps, audio_length):
 
 
 
-def predict_language_for_segment(audio_segment, allowed_languages=["en", "zh", "ja", "ar", "yue", "ko", "vi", "es", "fr"], model="large-v2"):
+def predict_language_for_segment(audio_segment, allowed_languages=["en", "zh", "ja", "ar", "yue"], model="large-v2"):
     # Convert audio segment to Mel spectrogram
 
     audio_segment = whisper.pad_or_trim(audio_segment)
@@ -150,153 +150,55 @@ def predict_language_for_segment(audio_segment, allowed_languages=["en", "zh", "
     return max_language
 
 
-# def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, detected_language):
-#     # Create a temporary file for the audio segment
-#     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-#     torchaudio.save(temp_file.name, audio_segment.unsqueeze(0), sampling_rate)
-#     temp_file.close()  # Close the file so Whisper can read it
-    
-#     # Transcribe the audio segment using Whisper
-#     try:
-#         result = whisper_model.transcribe(temp_file.name, language=detected_language, word_timestamps=True)
-#         transcription = result["text"]
-#         segments = result["segments"]
-#         pprint(result)
-#         # pprint(result)
-#     except Exception as e:
-#         print(f"Error transcribing segment: {e}")
-#         traceback.print_exc()
-#         transcription = ""
-#         segments = []
-
-#         raise
-
-#     # Clean up the temporary file
-#     os.remove(temp_file.name)
-#     return transcription, segments, detected_language
-
 def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, detected_language):
-
-    print("start_frame: ", start_frame)
-    print("end_frame: ", end_frame)
-    print("sampling_rate: ", sampling_rate)
-
     # Create a temporary file for the audio segment
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
     torchaudio.save(temp_file.name, audio_segment.unsqueeze(0), sampling_rate)
     temp_file.close()  # Close the file so Whisper can read it
-    
-    # Calculate and print the audio segment length in seconds
-    audio_length_seconds = (end_frame - start_frame) / sampling_rate
-    print(f"Audio segment length: {audio_length_seconds:.2f} seconds")
     
     # Transcribe the audio segment using Whisper
     try:
         result = whisper_model.transcribe(temp_file.name, language=detected_language, word_timestamps=True)
         transcription = result["text"]
         segments = result["segments"]
+        pprint(result)
         # pprint(result)
     except Exception as e:
         print(f"Error transcribing segment: {e}")
         traceback.print_exc()
         transcription = ""
         segments = []
-        raise  # Optionally re-raise the exception if you want to handle it further up the call stack
+
+        raise
 
     # Clean up the temporary file
     os.remove(temp_file.name)
     return transcription, segments, detected_language
 
-# def update_segments_with_language(words_segments, parent_start_frame, sampling_rate, detector, detected_language=None):
-#     new_segments = []
-
-#     for segment in words_segments:
-#         # segment_text = ' '.join([word['word'] for word in segment['words']])
-#         segment_text = segment["text"]
-#         text_language = detect_language_with_lingua(segment_text, detector)  # Use the Lingua function for language detection
-        
-#         # Optimize the logic for determining segment language
-#         segment_language = text_language if detected_language != "yue" or text_language != "zh" else "yue"
-
-
-#         # Adjust start and end frames relative to the parent segment's start frame
-#         start_frame = int(segment['start'] * sampling_rate) + parent_start_frame
-#         end_frame = int(segment['end'] * sampling_rate) + parent_start_frame
-        
-#         new_segments.append({
-#             'start': start_frame,
-#             'end': end_frame,
-#             'lang': segment_language,
-#             'text': segment_text,
-#             # add words timestamps here for futhure use and also add the parent_start_frame
-#         })
-
-#     return new_segments
-
-
-def filter_segments(segments):
-    """
-    Filter the segments to include only the keys 'start', 'end', 'lang', and 'text'.
-
-    Parameters:
-    segments (list of dicts): The original segments containing various keys.
-
-    Returns:
-    list of dicts: The filtered segments containing only the specified keys.
-    """
-    filtered_segments = []
-    for segment in segments:
-        filtered_segment = {
-            'start': segment['start'],
-            'end': segment['end'],
-            'lang': segment['lang'],
-            'text': segment['text']
-        }
-        filtered_segments.append(filtered_segment)
-    return filtered_segments
-
-def detect_segment_language(segment_text, detected_language, detector):
-    text_language = detect_language_with_lingua(segment_text, detector)  # Language detection
-        
-    # Determine segment language, considering special cases
-    segment_language = text_language if detected_language != "yue" or text_language != "zh" else "yue"
-
-    return segment_language
-
 def update_segments_with_language(words_segments, parent_start_frame, sampling_rate, detector, detected_language=None):
     new_segments = []
 
     for segment in words_segments:
+        # segment_text = ' '.join([word['word'] for word in segment['words']])
         segment_text = segment["text"]
-        segment_language = detect_segment_language(segment_text, detected_language, detector)
-
-        # Calculate absolute start and end frames for the segment
-        segment_start_frame_absolute = int(segment['start'] * sampling_rate) + parent_start_frame
-        segment_end_frame_absolute = int(segment['end'] * sampling_rate) + parent_start_frame
+        text_language = detect_language_with_lingua(segment_text, detector)  # Use the Lingua function for language detection
         
-        # Adjust word timestamps relative to the entire audio file
-        words_with_timestamps = []
-        for word in segment.get('words', []):
-            word_start_absolute = int(word['start'] * sampling_rate) + parent_start_frame
-            word_end_absolute = int(word['end'] * sampling_rate) + parent_start_frame
-            words_with_timestamps.append({
-                'word': word['word'],
-                'start': word_start_absolute,
-                'end': word_end_absolute,
-                'probability': word.get('probability', 1.0)  # Include probability if available
-            })
+        # Optimize the logic for determining segment language
+        segment_language = text_language if detected_language != "yue" or text_language != "zh" else "yue"
 
+
+        # Adjust start and end frames relative to the parent segment's start frame
+        start_frame = int(segment['start'] * sampling_rate) + parent_start_frame
+        end_frame = int(segment['end'] * sampling_rate) + parent_start_frame
+        
         new_segments.append({
-            'start': segment_start_frame_absolute,
-            'end': segment_end_frame_absolute,
+            'start': start_frame,
+            'end': end_frame,
             'lang': segment_language,
-            'text': segment_text,
-            'words': words_with_timestamps,  # Updated to include adjusted word timestamps
-            'parent_start_frame': parent_start_frame  # Add parent_start_frame for reference
+            'text': segment_text
         })
 
     return new_segments
-
 
 def frames_to_milliseconds(frames, sample_rate):
     """Converts frame numbers to milliseconds based on the given sample rate."""
@@ -345,179 +247,9 @@ def save_subtitles(srt_content, json_content, srt_path, json_path):
     with open(json_path, "w", encoding="utf-8") as json_file:
         json_file.write(json_content)
 
-def refine_transcription_segments_with_punctuation(transcription_segments, sample_rate):
-    """
-    Refines transcription segments based on punctuation marks within the words of each segment.
-
-    Parameters:
-    - transcription_segments: List of transcription segments, each containing word-level details.
-    - sample_rate: The sampling rate of the audio file.
-
-    Returns:
-    - List of refined transcription segments.
-    """
-    refined_segments = []
-    # punctuation_marks = {'.', '?', '!', '。'}
-    punctuation_marks = {
-        '、',  # Adding full-width ideographic comma
-        ',', '，',  # Adding half-width and full-width commas
-        '.', '。',  # Adding full-width period (half-width already included)
-        '?', '？',  # Adding full-width question mark (half-width already included)
-        '!', '！',  # Adding full-width exclamation mark (half-width already included)
-    }
-
-    for segment in transcription_segments:
-        # Initialize variables for creating new segments based on punctuation
-        new_segment_start = segment['start']
-        new_segment_words = []
-
-        for word in segment['words']:
-            new_segment_words.append(word)
-            # If the word ends with a punctuation mark, conclude the current segment
-            if any(word['word'].endswith(punct) for punct in punctuation_marks):
-                # Calculate end time of the current segment based on the word's end time
-                new_segment_end = word['end']
-                # Append the new segment
-                refined_segments.append({
-                    'start': new_segment_start,
-                    'end': new_segment_end,
-                    'lang': segment['lang'],
-                    'text': ''.join(w['word'] for w in new_segment_words).lstrip(" "),
-                    'words': new_segment_words
-                })
-                # Reset variables for the next segment
-                new_segment_start = new_segment_end
-                new_segment_words = []
-
-        # Ensure any remaining words form a final segment
-        if new_segment_words:
-            refined_segments.append({
-                'start': new_segment_start,
-                'end': segment['end'],
-                'lang': segment['lang'],
-                'text': ''.join(w['word'] for w in new_segment_words).lstrip(" "),
-                'words': new_segment_words
-            })
-
-    return refined_segments
 
 
-# def refine_transcription_segments_with_vad(transcription_segments, vad_segments, sampling_rate):
-#     """
-#     Refines transcription segments based on VAD segments, dividing using word-level timestamps.
-
-#     Parameters:
-#     - transcription_segments: List of transcription segments with word-level detail.
-#     - vad_segments: Speech segments detected by VAD.
-#     - sampling_rate: The sampling rate of the audio file.
-
-#     Returns:
-#     - List of refined transcription segments.
-#     """
-#     refined_segments = []
-
-#     for trans_seg in transcription_segments:
-#         trans_start = int(trans_seg['start'] * sampling_rate)
-#         trans_end = int(trans_seg['end'] * sampling_rate)
-#         trans_words = trans_seg.get('words', [])
-
-#         overlapping_vad_segments = [vad for vad in vad_segments if not (vad['end'] < trans_start or vad['start'] > trans_end)]
-
-#         if not overlapping_vad_segments:
-#             # If no overlapping VAD segments, add the transcription segment as is
-#             trans_seg.pop("words")
-#             refined_segments.append(trans_seg)
-#         else:
-#             # Divide the transcription segment based on overlapping VAD segments
-#             for vad_seg in overlapping_vad_segments:
-#                 vad_start = vad_seg['start']
-#                 vad_end = vad_seg['end']
-#                 # Filter words that fall within the current VAD segment
-#                 words_in_vad = [word for word in trans_words if vad_start <= int(word['start'] * sampling_rate) <= vad_end]
-#                 if words_in_vad:
-#                     # Create a new segment for each group of words in the VAD segment
-#                     segment_text = ''.join(word['word'] for word in words_in_vad).lstrip(" ")
-#                     refined_segments.append({
-#                         'start': words_in_vad[0]['start'],
-#                         'end': words_in_vad[-1]['end'],
-#                         'lang': trans_seg['lang'],
-#                         'text': segment_text,
-#                         'words': words_in_vad  # Include word-level timestamps for further use
-#                     })
-
-#     return refined_segments
-
-def refine_segment_with_vad(transcription_segment, vad_segments, sample_rate):
-    refined_segments = []
-
-    # Preparation: Convert VAD times to samples if needed
-    vad_times = [(vad['start'], vad['end']) for vad in vad_segments]
-
-    current_start = transcription_segment['start']
-    segment_end = transcription_segment['end']
-    segment_words = transcription_segment.get('words', [])
-    
-    for word in segment_words:
-        word_start = word['start']
-        word_end = word['end']
-        
-        # Check if word overlaps with any VAD segment
-        for vad_start, vad_end in vad_times:
-            if word_start < vad_end and word_end > vad_start:  # If the word is within a VAD segment
-                # Append word to the current segment's text
-                if not refined_segments or refined_segments[-1]['end'] < word_start:
-                    # Start a new segment if there's no overlap with the last refined segment
-                    refined_segments.append({
-                        'start': word_start,
-                        'end': word_end,
-                        'lang': transcription_segment['lang'],
-                        'text': word['word'].lstrip(),
-                        'words': [word]  # Including the word object itself for reference
-                    })
-                else:
-                    # Otherwise, extend the current segment
-                    refined_segments[-1]['end'] = max(refined_segments[-1]['end'], word_end)
-                    refined_segments[-1]['text'] += "" + word['word']
-                    refined_segments[-1]['words'].append(word)
-                break
-
-    # Ensure segment continuity and no loss of information
-    if refined_segments:
-        # Adjust the first and last segment to match the original boundaries if needed
-        refined_segments[0]['start'] = min(refined_segments[0]['start'], current_start)
-        refined_segments[-1]['end'] = max(refined_segments[-1]['end'], segment_end)
-
-    return refined_segments
-
-
-def refine_transcription_segments_with_vad(transcription_segments, vad_segments, sample_rate):
-    """
-    Refines all transcription segments based on VAD segments.
-
-    Parameters:
-    - transcription_segments: List of transcription segments with word-level detail.
-    - vad_segments: Speech segments detected by VAD.
-    - sample_rate: The sampling rate of the audio file.
-
-    Returns:
-    - List of refined transcription segments.
-    """
-    all_refined_segments = []
-
-    for trans_seg in transcription_segments:
-        refined_segments = refine_segment_with_vad(trans_seg, vad_segments, sample_rate)
-        all_refined_segments.extend(refined_segments)
-    
-    # Further processing to assign actual text to each refined segment based on word timings
-    # This step is left as an exercise since it requires accessing and dividing the 'text' and 'words'
-    # attributes of the original transcription_segments based on the refined segment timings.
-
-    return all_refined_segments
-
-
-
-
-def process_audio_segments(speech_timestamps, wav, sampling_rate, model_name, whisper_model, detector, vad_timestamps=None):
+def process_audio_segments(speech_timestamps, wav, sampling_rate, model_name, whisper_model, detector):
     """
     Process audio segments to obtain language and transcription for each segment.
 
@@ -534,8 +266,6 @@ def process_audio_segments(speech_timestamps, wav, sampling_rate, model_name, wh
 
     print("Transcribing audio...")
 
-    
-
     # init run to obtain the language of each segment
     transcription_timestamps_with_lang = []
 
@@ -544,10 +274,6 @@ def process_audio_segments(speech_timestamps, wav, sampling_rate, model_name, wh
         start_sample, end_sample = int(start_frame), int(end_frame)
         # segment_audio = whisper.pad_or_trim(wav[start_sample:end_sample])
         segment_audio = wav[start_sample:end_sample]
-
-        # print("start_frame: ", start_frame)
-        # print("end_frame: ", end_frame)
-        # print("sampling_rate: ", sampling_rate)
         
         detected_language = predict_language_for_segment(segment_audio, model=model_name)  # Initial language detection
         transcription, words_segments, _ = transcribe_segment(segment_audio, start_frame, end_frame, sampling_rate, detected_language)
@@ -561,31 +287,9 @@ def process_audio_segments(speech_timestamps, wav, sampling_rate, model_name, wh
             detected_language=detected_language
         )
         transcription_timestamps_with_lang.extend(new_segments)
-
-        # print("start_frame: ", start_frame)
-        # print("end_frame: ", end_frame)
-        # print("sampling_rate: ", sampling_rate)
-
         print(f"Segment {start_frame/sampling_rate}-{end_frame/sampling_rate}s (Language: {detected_language}): {transcription}")
 
-
-
-    if vad_timestamps:
-        # Assuming you have a list `transcription_segments` populated and `sample_rate` defined
-        refined_segments = refine_transcription_segments_with_punctuation(transcription_timestamps_with_lang, sampling_rate)
-
-        # Call the function to refine based on VAD
-        refined_segments = refine_transcription_segments_with_vad(refined_segments, vad_timestamps, sampling_rate)
-
-        # refined_segments = transcription_timestamps_with_lang
-
-    else:
-
-        refined_segments = transcription_timestamps_with_lang
-
-
-    # return transcription_timestamps_with_lang
-    return filter_segments(refined_segments)
+    return transcription_timestamps_with_lang
 
 
 def merge_segments(transcription_timestamps, sample_rate):
@@ -810,69 +514,61 @@ if __name__ == "__main__":
     srt_path = f"{base_path}.srt"
     json_path = f"{base_path}.json"
 
-    # Specify the sampling rate
-    sampling_rate = 16000  # Hz
 
     if not (os.path.exists(srt_path) or os.path.exists(json_path)) or args.force:
         
 
-        try:
-            # Initialize the Lingua language detector with specified languages
-            languages = [Language.ENGLISH, Language.CHINESE, Language.JAPANESE, Language.ARABIC]  # Adjust languages as needed
-            detector = LanguageDetectorBuilder.from_languages(*languages)\
-                .with_minimum_relative_distance(0.9)\
-                .build()
+        # Initialize the Lingua language detector with specified languages
+        languages = [Language.ENGLISH, Language.CHINESE, Language.JAPANESE, Language.ARABIC]  # Adjust languages as needed
+        detector = LanguageDetectorBuilder.from_languages(*languages)\
+            .with_minimum_relative_distance(0.9)\
+            .build()
 
 
-            # Set the number of threads for PyTorch
-            torch.set_num_threads(1)
+        # Set the number of threads for PyTorch
+        torch.set_num_threads(1)
 
-            # Load the Silero VAD model
-            model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=False)
-            # model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=True)
-            (get_speech_timestamps, _, read_audio, *_) = utils
-            # Load Whisper model for language detection and transcription
-            whisper_model = whisper.load_model(model_name)
+        # Load the Silero VAD model
+        model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=False)
+        (get_speech_timestamps, _, read_audio, *_) = utils
+        # Load Whisper model for language detection and transcription
+        whisper_model = whisper.load_model(model_name)
 
-            
+        # Specify the sampling rate
+        sampling_rate = 16000  # Hz
 
-            # audio_path = '/home/lachlan/Projects/whisper_with_lang_detect/IMG_6276.wav'
-            # video_path = '/home/lachlan/Projects/whisper_with_lang_detect/IMG_6276.MOV'
+        # audio_path = '/home/lachlan/Projects/whisper_with_lang_detect/IMG_6276.wav'
+        # video_path = '/home/lachlan/Projects/whisper_with_lang_detect/IMG_6276.MOV'
 
-            
-            # Extract audio from the video
-            extract_audio_from_video(video_path, audio_path)
-            
-            
+        
+        # Extract audio from the video
+        extract_audio_from_video(video_path, audio_path)
+        
+        
 
-            # Load your audio file
-            wav = read_audio(audio_path, sampling_rate=sampling_rate)
+        # Load your audio file
+        wav = read_audio(audio_path, sampling_rate=sampling_rate)
 
-            # Get speech timestamps from the audio file using Silero VAD
-            speech_timestamps = get_speech_timestamps(wav, model, sampling_rate=sampling_rate)
-            audio_length = len(wav)
+        # Get speech timestamps from the audio file using Silero VAD
+        speech_timestamps = get_speech_timestamps(wav, model, sampling_rate=sampling_rate)
+        audio_length = len(wav)
 
-            adjust_timestamps(speech_timestamps, audio_length)
+        adjust_timestamps(speech_timestamps, audio_length)
 
-            # init run to obtain the language of each segment
-            transcription_timestamps_with_lang = process_audio_segments(speech_timestamps, wav, sampling_rate, model_name, whisper_model, detector)
-            clean_timestamps(transcription_timestamps_with_lang, audio_length)
+        # init run to obtain the language of each segment
+        transcription_timestamps_with_lang = process_audio_segments(speech_timestamps, wav, sampling_rate, model_name, whisper_model, detector)
+        clean_timestamps(transcription_timestamps_with_lang, audio_length)
 
-            # merged based on the language detection from the result of whisper and langua
-            merged_segments = merge_segments(transcription_timestamps_with_lang, sampling_rate)
+        # merged based on the language detection from the result of whisper and langua
+        merged_segments = merge_segments(transcription_timestamps_with_lang, sampling_rate)
 
-            # print("Transcribe merged VAD...")
-            adjust_timestamps(merged_segments, audio_length)
+        # print("Transcribe merged VAD...")
+        adjust_timestamps(merged_segments, audio_length)
 
 
-            # second transcription of the language-specified and merged segments
-            final_subtitles = process_audio_segments(merged_segments, wav, sampling_rate, model_name, whisper_model, detector, vad_timestamps=speech_timestamps)
-            clean_timestamps(final_subtitles, audio_length)
-
-        except Exception as e:
-            print("error: ", str(e))
-            traceback.print_exc()
-            final_subtitles = []
+        # second transcription of the language-specified and merged segments
+        final_subtitles = process_audio_segments(merged_segments, wav, sampling_rate, model_name, whisper_model, detector)
+        clean_timestamps(final_subtitles, audio_length)
 
         print("Final subtitles: ")
         for line in final_subtitles:

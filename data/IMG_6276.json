@@ -1,9 +1,17 @@
 [
     {
         "start": "00:00:00,000",
-        "end": "00:00:04,940",
+        "end": "00:00:00,780",
         "lang": "zh",
-        "text": "来品鉴一下今天的胡萝卜拌牛肉"
+        "text": "来",
+        "words": [
+            {
+                "word": "来",
+                "start": 0,
+                "end": 12480,
+                "probability": 0.641058087348938
+            }
+        ]
     },
     {
         "start": "00:00:09,059",
@@ -31,9 +39,21 @@
     },
     {
         "start": "00:00:20,214",
+        "end": "00:00:21,334",
+        "lang": "en",
+        "text": "Top notch."
+    },
+    {
+        "start": "00:00:21,334",
+        "end": "00:00:23,034",
+        "lang": "en",
+        "text": "I think this is top notch."
+    },
+    {
+        "start": "00:00:23,034",
         "end": "00:00:25,814",
         "lang": "en",
-        "text": " Top notch. I think this is top notch. I'm a top chef."
+        "text": "I'm a top chef."
     },
     {
         "start": "00:00:29,890",
@@ -45,7 +65,7 @@
         "start": "00:00:33,026",
         "end": "00:00:44,546",
         "lang": "en",
-        "text": " I think this is a classic example as a combination of eastern and western cooking."
+        "text": "I think this is a classic example as a combination of eastern and western cooking."
     },
     {
         "start": "00:00:47,458",
@@ -57,12 +77,12 @@
         "start": "00:00:52,866",
         "end": "00:00:53,046",
         "lang": "en",
-        "text": " Okay."
+        "text": "Okay."
     },
     {
         "start": "00:00:53,698",
-        "end": "00:00:53,798",
-        "lang": "en",
-        "text": " impres"
+        "end": "00:00:53,778",
+        "lang": "zh",
+        "text": "忙"
     }
 ]

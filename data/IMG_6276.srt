@@ -1,6 +1,6 @@
 1
-00:00:00,000 --> 00:00:04,940
-来品鉴一下今天的胡萝卜拌牛肉
+00:00:00,000 --> 00:00:00,780
+来
 
 2
 00:00:09,059 --> 00:00:10,000
@@ -19,26 +19,34 @@
 酸辣失忆
 
 6
-00:00:20,214 --> 00:00:25,814
- Top notch. I think this is top notch. I'm a top chef.
+00:00:20,214 --> 00:00:21,334
+Top notch.
 
 7
+00:00:21,334 --> 00:00:23,034
+I think this is top notch.
+
+8
+00:00:23,034 --> 00:00:25,814
+I'm a top chef.
+
+9
 00:00:29,890 --> 00:00:31,510
 簡直就是中西結合的典範
 
-8
+10
 00:00:33,026 --> 00:00:44,546
- I think this is a classic example as a combination of eastern and western cooking.
+I think this is a classic example as a combination of eastern and western cooking.
 
-9
+11
 00:00:47,458 --> 00:00:47,818
 好きよ
 
-10
+12
 00:00:52,866 --> 00:00:53,046
- Okay.
+Okay.
 
-11
-00:00:53,698 --> 00:00:53,798
- impres
+13
+00:00:53,698 --> 00:00:53,778
+忙
 
