@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="figs/banner.png" alt="LazyingArt banner" />
+</p>
+
 # MultilingualWhisper
 
 A drop‑in subtitle generator built on OpenAI Whisper, extended with precise per‑segment language detection and refinement—perfect for videos containing multiple languages.
