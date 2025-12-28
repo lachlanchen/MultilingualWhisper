@@ -515,117 +515,91 @@ def refine_transcription_segments_with_vad(transcription_segments, vad_segments,
     return all_refined_segments
 
 
-def split_by_spaces_for_non_spaced_languages(segments):
+def split_long_segments_by_time(segments, max_duration_seconds=4.0, sample_rate=16000):
     """
-    Split segments by spaces for languages that don't naturally use spaces (Chinese, Japanese, etc.).
-    In these languages, spaces often indicate natural pauses.
+    Split segments that are longer than max_duration_seconds.
     
     Parameters:
     - segments: List of subtitle segments
+    - max_duration_seconds: Maximum duration for each segment in seconds
+    - sample_rate: Audio sample rate
     
     Returns:
-    - List of segments split at spaces for appropriate languages
+    - List of segments with long ones split
     """
     refined_segments = []
-    non_spaced_languages = {'zh', 'ja', 'ko', 'ar', 'yue'}
     
     for segment in segments:
-        lang = segment.get('lang', 'en')
+        duration = (segment['end'] - segment['start']) / sample_rate
         
-        if lang not in non_spaced_languages or ' ' not in segment['text']:
+        if duration <= max_duration_seconds:
             refined_segments.append(segment)
-            continue
-            
-        words = segment.get('words', [])
-        if not words:
-            # Fallback: split by spaces without word timestamps
-            text_parts = segment['text'].split(' ')
-            if len(text_parts) > 1:
-                # Simple equal time division
-                total_duration = segment['end'] - segment['start']
-                time_per_part = total_duration // len(text_parts)
-                
-                for i, part in enumerate(text_parts):
-                    if part.strip():
-                        refined_segments.append({
-                            'start': segment['start'] + i * time_per_part,
-                            'end': segment['start'] + (i + 1) * time_per_part,
-                            'lang': segment['lang'],
-                            'text': part.strip()
-                        })
+        else:
+            # Split long segment by time
+            words = segment.get('words', [])
+            if not words:
+                # If no word-level timestamps, just split in half
+                mid_point = (segment['start'] + segment['end']) // 2
+                refined_segments.extend([
+                    {
+                        'start': segment['start'],
+                        'end': mid_point,
+                        'lang': segment['lang'],
+                        'text': segment['text'][:len(segment['text'])//2].strip(),
+                    },
+                    {
+                        'start': mid_point,
+                        'end': segment['end'],
+                        'lang': segment['lang'],
+                        'text': segment['text'][len(segment['text'])//2:].strip(),
+                    }
+                ])
             else:
-                refined_segments.append(segment)
-            continue
-        
-        # Split using word-level timestamps, looking for spaces
-        current_segment_start = segment['start']
-        current_words = []
-        
-        for i, word in enumerate(words):
-            current_words.append(word)
-            
-            # Check if this word is followed by a space that indicates a natural break
-            current_text = ''.join(w['word'] for w in current_words)
-            
-            # If we find a space after this word and have accumulated enough content
-            if (i < len(words) - 1 and len(current_words) >= 2 and 
-                any(' ' in w['word'] for w in current_words[-2:])):
+                # Split based on words and time
+                target_split_time = segment['start'] + (max_duration_seconds * sample_rate)
+                split_index = 0
                 
-                refined_segments.append({
-                    'start': current_segment_start,
-                    'end': word['end'],
-                    'lang': segment['lang'],
-                    'text': current_text.strip(),
-                    'words': current_words.copy()
-                })
+                for i, word in enumerate(words):
+                    if word['end'] >= target_split_time:
+                        split_index = max(1, i)  # Ensure at least one word per segment
+                        break
+                else:
+                    split_index = len(words) // 2  # Fallback to middle
                 
-                # Reset for next segment
-                current_segment_start = word['end']
-                current_words = []
-        
-        # Add remaining words as final segment
-        if current_words:
-            refined_segments.append({
-                'start': current_segment_start,
-                'end': segment['end'],
-                'lang': segment['lang'],
-                'text': ''.join(w['word'] for w in current_words).strip(),
-                'words': current_words
-            })
+                if split_index > 0 and split_index < len(words):
+                    first_segment = {
+                        'start': segment['start'],
+                        'end': words[split_index-1]['end'],
+                        'lang': segment['lang'],
+                        'text': ''.join(w['word'] for w in words[:split_index]).strip(),
+                        'words': words[:split_index]
+                    }
+                    
+                    second_segment = {
+                        'start': words[split_index]['start'],
+                        'end': segment['end'],
+                        'lang': segment['lang'],
+                        'text': ''.join(w['word'] for w in words[split_index:]).strip(),
+                        'words': words[split_index:]
+                    }
+                    
+                    # Recursively split if still too long
+                    refined_segments.extend(split_long_segments_by_time([first_segment], max_duration_seconds, sample_rate))
+                    refined_segments.extend(split_long_segments_by_time([second_segment], max_duration_seconds, sample_rate))
+                else:
+                    refined_segments.append(segment)
     
     return refined_segments
 
 
-def get_language_limits(lang):
-    """
-    Get appropriate character and word limits based on language characteristics.
-    
-    Parameters:
-    - lang: Language code
-    
-    Returns:
-    - Tuple of (max_chars, max_words)
-    """
-    # Chinese, Japanese, Korean have denser information per character
-    cjk_languages = {'zh', 'ja', 'ko', 'yue'}
-    # Arabic reads right to left and has different spacing
-    rtl_languages = {'ar'}
-    
-    if lang in cjk_languages:
-        return 30, 15  # Fewer characters but more words since no spaces
-    elif lang in rtl_languages:
-        return 50, 12
-    else:
-        return 60, 10  # Default for Latin-based languages
-
-
-def split_long_segments_by_length(segments):
+def split_long_segments_by_length(segments, max_chars=60, max_words=10):
     """
     Split segments that are too long by character count or word count.
-    Uses language-appropriate limits.
     
     Parameters:
     - segments: List of subtitle segments
+    - max_chars: Maximum characters per segment
+    - max_words: Maximum words per segment
     
     Returns:
     - List of segments with long ones split
@@ -634,180 +608,59 @@ def split_long_segments_by_length(segments):
     
     for segment in segments:
         text = segment['text'].strip()
-        lang = segment.get('lang', 'en')
         words = segment.get('words', [])
         
-        max_chars, max_words = get_language_limits(lang)
-        
-        # For CJK languages, count characters; for others, count words primarily
-        cjk_languages = {'zh', 'ja', 'ko', 'yue'}
-        
-        if lang in cjk_languages:
-            # For CJK, focus on character count
-            is_too_long = len(text) > max_chars
-        else:
-            # For other languages, focus on word count but also check characters
-            word_count = len(text.split()) if text else 0
-            is_too_long = word_count > max_words or len(text) > max_chars
-        
-        if not is_too_long:
+        # Check if segment is too long
+        if len(text) <= max_chars and len(text.split()) <= max_words:
             refined_segments.append(segment)
             continue
         
         # Split long segment
-        if words and len(words) > 1:
-            # Split using word timestamps - find the best split point
-            split_index = len(words) // 2
-            
-            # For CJK languages, try to find a better split point
-            if lang in cjk_languages:
-                target_chars = len(text) // 2
-                char_count = 0
-                for i, word in enumerate(words):
-                    char_count += len(word['word'])
-                    if char_count >= target_chars and i > 0:
-                        split_index = i
-                        break
-            
-            # Ensure we don't split at the very beginning or end
-            split_index = max(1, min(split_index, len(words) - 1))
+        if words and len(words) > max_words:
+            # Split by word count using word timestamps
+            mid_point = min(max_words, len(words) // 2)
             
             first_segment = {
                 'start': segment['start'],
-                'end': words[split_index-1]['end'],
+                'end': words[mid_point-1]['end'],
                 'lang': segment['lang'],
-                'text': ''.join(w['word'] for w in words[:split_index]).strip(),
-                'words': words[:split_index]
+                'text': ''.join(w['word'] for w in words[:mid_point]).strip(),
+                'words': words[:mid_point]
             }
             
             second_segment = {
-                'start': words[split_index]['start'],
+                'start': words[mid_point]['start'],
                 'end': segment['end'],
                 'lang': segment['lang'],
-                'text': ''.join(w['word'] for w in words[split_index:]).strip(),
-                'words': words[split_index:]
+                'text': ''.join(w['word'] for w in words[mid_point:]).strip(),
+                'words': words[mid_point:]
             }
             
             # Recursively process split segments
-            refined_segments.extend(split_long_segments_by_length([first_segment]))
-            refined_segments.extend(split_long_segments_by_length([second_segment]))
+            refined_segments.extend(split_long_segments_by_length([first_segment], max_chars, max_words))
+            refined_segments.extend(split_long_segments_by_length([second_segment], max_chars, max_words))
         else:
-            # Fallback: split by character/word count without word timestamps
-            if lang in cjk_languages:
-                # Split by characters for CJK
-                mid_char = len(text) // 2
-                refined_segments.extend([
-                    {
-                        'start': segment['start'],
-                        'end': (segment['start'] + segment['end']) // 2,
-                        'lang': segment['lang'],
-                        'text': text[:mid_char].strip(),
-                    },
-                    {
-                        'start': (segment['start'] + segment['end']) // 2,
-                        'end': segment['end'],
-                        'lang': segment['lang'],
-                        'text': text[mid_char:].strip(),
-                    }
-                ])
-            else:
-                # Split by words for other languages
-                text_words = text.split()
-                mid_word = len(text_words) // 2
-                
-                first_text = ' '.join(text_words[:mid_word])
-                second_text = ' '.join(text_words[mid_word:])
-                
-                refined_segments.extend([
-                    {
-                        'start': segment['start'],
-                        'end': (segment['start'] + segment['end']) // 2,
-                        'lang': segment['lang'],
-                        'text': first_text.strip(),
-                    },
-                    {
-                        'start': (segment['start'] + segment['end']) // 2,
-                        'end': segment['end'],
-                        'lang': segment['lang'],
-                        'text': second_text.strip(),
-                    }
-                ])
-    
-    return refined_segments
-
-
-def refine_with_vad_pauses(segments, vad_segments, sample_rate, max_duration=6.0):
-    """
-    Use VAD segments to find finer natural breaks within long segments.
-    
-    Parameters:
-    - segments: List of subtitle segments
-    - vad_segments: VAD segments with speech/silence boundaries
-    - sample_rate: Audio sample rate
-    - max_duration: Only split segments longer than this duration
-    
-    Returns:
-    - List of segments refined using VAD boundaries
-    """
-    refined_segments = []
-    
-    for segment in segments:
-        duration = (segment['end'] - segment['start']) / sample_rate
-        
-        if duration <= max_duration:
-            refined_segments.append(segment)
-            continue
-        
-        words = segment.get('words', [])
-        if not words:
-            refined_segments.append(segment)
-            continue
-        
-        # Find VAD boundaries within this segment
-        segment_vad = []
-        for vad in vad_segments:
-            if (vad['start'] >= segment['start'] and vad['end'] <= segment['end']) or \
-               (vad['start'] < segment['end'] and vad['end'] > segment['start']):
-                segment_vad.append(vad)
-        
-        if len(segment_vad) <= 1:
-            refined_segments.append(segment)
-            continue
-        
-        # Split the segment at VAD boundaries
-        current_start = segment['start']
-        current_words = []
-        
-        for word in words:
-            current_words.append(word)
+            # Split by character count (fallback when no word timestamps)
+            mid_char = min(max_chars, len(text) // 2)
+            # Try to split at a space near the middle
+            split_pos = text.rfind(' ', 0, mid_char)
+            if split_pos == -1:
+                split_pos = mid_char
             
-            # Check if this word is near a VAD boundary (within 100ms)
-            word_end = word['end']
-            for vad in segment_vad:
-                if abs(word_end - vad['end']) < (0.1 * sample_rate) and len(current_words) >= 3:
-                    # Create a segment up to this point
-                    refined_segments.append({
-                        'start': current_start,
-                        'end': word_end,
-                        'lang': segment['lang'],
-                        'text': ''.join(w['word'] for w in current_words).strip(),
-                        'words': current_words.copy()
-                    })
-                    
-                    # Reset for next segment
-                    current_start = word_end
-                    current_words = []
-                    break
-        
-        # Add remaining words
-        if current_words:
-            refined_segments.append({
-                'start': current_start,
-                'end': segment['end'],
-                'lang': segment['lang'],
-                'text': ''.join(w['word'] for w in current_words).strip(),
-                'words': current_words
-            })
+            refined_segments.extend([
+                {
+                    'start': segment['start'],
+                    'end': (segment['start'] + segment['end']) // 2,
+                    'lang': segment['lang'],
+                    'text': text[:split_pos].strip(),
+                },
+                {
+                    'start': (segment['start'] + segment['end']) // 2,
+                    'end': segment['end'],
+                    'lang': segment['lang'],
+                    'text': text[split_pos:].strip(),
+                }
+            ])
     
     return refined_segments
 
@@ -834,77 +687,13 @@ def enhanced_punctuation_split(segments):
         ':', '：',        # Colons
         '—', '–', '-',    # Dashes
         '…',              # Ellipsis
-        '/', '／',        # Slashes
-        '|', '｜',        # Pipes
-        '~', '～',        # Tildes
     }
     
     # Common pause words/phrases that could indicate natural breaks
     pause_words = {
-        'en': [
-            # Conjunctions and connectors
-            ' and ', ' but ', ' or ', ' nor ', ' for ', ' so ', ' yet ', ' while ', ' since ', ' until ', ' because ', ' although ', ' though ', ' unless ', ' if ', ' when ', ' where ', ' why ', ' how ', ' that ', ' which ', ' who ',
-            # Transitional words and phrases
-            ' however ', ' therefore ', ' moreover ', ' furthermore ', ' nevertheless ', ' nonetheless ', ' meanwhile ', ' consequently ', ' subsequently ', ' additionally ', ' similarly ', ' likewise ', ' conversely ', ' alternatively ', ' instead ', ' rather ', ' otherwise ', ' hence ', ' thus ', ' accordingly ', ' besides ', ' also ', ' too ', ' in addition ', ' on the other hand ', ' in contrast ', ' as a result ', ' for example ', ' for instance ', ' in particular ', ' specifically ', ' generally ', ' typically ', ' usually ', ' often ', ' sometimes ', ' occasionally ', ' frequently ', ' indeed ', ' actually ', ' really ', ' certainly ', ' obviously ', ' clearly ', ' apparently ', ' presumably ', ' unfortunately ', ' fortunately ', ' surprisingly ', ' interestingly ', ' importantly ', ' significantly ', ' notably ', ' especially ', ' particularly ', ' mainly ', ' primarily ', ' essentially ', ' basically ', ' simply ', ' merely ', ' only ', ' just ', ' even ', ' still ', ' already ', ' now ', ' then ', ' next ', ' later ', ' earlier ', ' before ', ' after ', ' during ', ' first ', ' second ', ' third ', ' finally ', ' lastly ', ' in conclusion ', ' to summarize ', ' in summary '
-        ],
-        'zh': [
-            # 转折连词
-            '但是', '可是', '不过', '然而', '却', '而', '只是', '只不过', '虽然', '尽管', '即使', '哪怕', '就算',
-            # 因果关系
-            '因为', '由于', '所以', '因此', '因而', '故而', '于是', '结果', '导致', '造成', '引起',
-            # 递进关系
-            '而且', '并且', '还有', '另外', '此外', '再者', '更重要的是', '不仅', '不但', '同时', '与此同时',
-            # 时间顺序
-            '然后', '接着', '随后', '之后', '后来', '最后', '最终', '开始', '首先', '其次', '再次', '接下来', '紧接着', '当时', '那时', '现在', '目前', '将来', '以后', '以前', '刚才', '马上', '立即',
-            # 举例说明
-            '比如', '例如', '比方说', '像是', '譬如', '好比', '如同', '正如', '就像',
-            # 总结概括
-            '总之', '总的来说', '综上所述', '简而言之', '换句话说', '也就是说', '总而言之',
-            # 条件假设
-            '如果', '假如', '要是', '倘若', '万一', '除非', '只要', '只有', '一旦',
-            # 并列关系
-            '一边', '一方面', '另一方面', '既', '也', '又', '还',
-            # 强调突出
-            '特别是', '尤其是', '主要是', '关键是', '重要的是', '值得注意的是',
-            # 语气词和停顿词
-            '嗯', '啊', '呃', '额', '嗯嗯', '对', '是', '对的', '没错', '当然', '肯定', '绝对', '确实', '真的', '实际上', '其实', '说实话', '老实说'
-        ],
-        'ja': [
-            # 基本的な接続詞
-            'そして', 'でも', 'しかし', 'だから', 'それで', 'それに', 'また', 'さらに', 'ところで', 'ただし', 'なので', 'けれど', 'けれども', 'だが', 'しかも', 'そこで', 'すると', 'それなら', 'それでは', 'ところが', 'なお', 'あるいは', 'または', 'もしくは', 'つまり', 'すなわち',
-            # 時間関係
-            'そのとき', 'その後', 'それから', '次に', '最初に', '最後に', '今度は', '今回は', '前回は', 'まず', 'はじめに', '終わりに', '今では', '現在は', 'これまで', 'これから', 'いつも', '時々', 'たまに', 'よく',
-            # 理由・原因
-            'なぜなら', 'というのは', 'そのため', 'したがって', 'ゆえに', 'だからこそ', 'おかげで', 'せいで',
-            # 例示・説明
-            '例えば', 'たとえば', '具体的には', 'つまり', 'すなわち', '要するに', '簡単に言えば', '言い換えれば',
-            # 逆接・対比
-            '逆に', '反対に', '一方で', '他方で', 'むしろ', 'かえって', 'それに対して', 'これに対して',
-            # 追加・補足
-            'それに加えて', 'その上', 'さらに言えば', '加えて', 'ちなみに', 'なお', 'また',
-            # 結論・まとめ
-            '結論として', '要するに', '簡単に言えば', 'とにかく', '結局', '最終的に', '全体的に'
-        ],
-        'ar': [
-            # Arabic conjunctions and connectors
-            'و', 'لكن', 'أو', 'إذا', 'عندما', 'حيث', 'لأن', 'كما', 'بينما', 'حتى', 'منذ', 'بعد', 'قبل', 'أثناء', 'رغم', 'مع ذلك', 'لذلك', 'إذن', 'أيضا', 'كذلك', 'مثل', 'بالإضافة إلى', 'من ناحية أخرى', 'في المقابل', 'على سبيل المثال', 'أخيرا', 'أولا', 'ثانيا', 'ثالثا'
-        ],
-        'ko': [
-            # Korean connectors and particles
-            '그리고', '그러나', '하지만', '그래서', '따라서', '또한', '또', '그런데', '그럼', '그렇다면', '왜냐하면', '예를 들어', '즉', '다시 말해서', '한편', '반면에', '그러므로', '그럼에도 불구하고', '게다가', '더욱이', '특히', '먼저', '다음에', '마지막으로', '결국', '결론적으로', '요약하면', '일반적으로', '보통', '때때로', '항상', '이제', '이미', '아직', '곧', '나중에', '먼저'
-        ],
-        'vi': [
-            # Vietnamese connectors
-            'và', 'nhưng', 'hoặc', 'nếu', 'khi', 'nơi', 'tại sao', 'vì', 'mặc dù', 'trong khi', 'cho đến khi', 'từ khi', 'sau khi', 'trước khi', 'trong khi', 'tuy nhiên', 'do đó', 'vì vậy', 'cũng', 'như', 'thêm vào đó', 'mặt khác', 'ngược lại', 'ví dụ', 'cuối cùng', 'đầu tiên', 'thứ hai', 'thứ ba'
-        ],
-        'es': [
-            # Spanish connectors
-            ' y ', ' pero ', ' o ', ' si ', ' cuando ', ' donde ', ' porque ', ' aunque ', ' mientras ', ' hasta ', ' desde ', ' después ', ' antes ', ' durante ', ' sin embargo ', ' por lo tanto ', ' también ', ' como ', ' además ', ' por otro lado ', ' en cambio ', ' por ejemplo ', ' finalmente ', ' primero ', ' segundo ', ' tercero ', ' entonces ', ' así que ', ' pues ', ' luego ', ' después ', ' ahora ', ' ya ', ' todavía ', ' pronto ', ' más tarde ', ' antes '
-        ],
-        'fr': [
-            # French connectors
-            ' et ', ' mais ', ' ou ', ' si ', ' quand ', ' où ', ' parce que ', ' bien que ', ' pendant que ', ' jusqu\'à ', ' depuis ', ' après ', ' avant ', ' pendant ', ' cependant ', ' donc ', ' aussi ', ' comme ', ' en plus ', ' d\'autre part ', ' en revanche ', ' par exemple ', ' enfin ', ' d\'abord ', ' ensuite ', ' puis ', ' alors ', ' maintenant ', ' déjà ', ' encore ', ' bientôt ', ' plus tard ', ' avant '
-        ]
+        'en': [' and ', ' but ', ' so ', ' then ', ' however ', ' therefore '],
+        'zh': ['然后', '但是', '所以', '因为', '而且', '或者'],
+        'ja': ['そして', 'でも', 'だから', 'それで', 'しかし'],
     }
     
     for segment in segments:
@@ -915,7 +704,6 @@ def enhanced_punctuation_split(segments):
             
         current_segment_start = segment['start']
         current_words = []
-        lang = segment.get('lang', 'en')
         
         for i, word in enumerate(words):
             current_words.append(word)
@@ -923,33 +711,16 @@ def enhanced_punctuation_split(segments):
             # Check for punctuation in word
             has_punctuation = any(punct in word['word'] for punct in extended_punctuation)
             
-            # Check for pause words specific to the language
+            # Check for pause words
             has_pause_word = False
             current_text = ''.join(w['word'] for w in current_words)
-            if lang in pause_words:
-                for pause in pause_words[lang]:
-                    if pause in current_text.lower():
-                        has_pause_word = True
-                        break
+            for lang, pause_list in pause_words.items():
+                if any(pause in current_text.lower() for pause in pause_list):
+                    has_pause_word = True
+                    break
             
-            # For Chinese, also look for natural repetition patterns that indicate pauses
-            has_repetition = False
-            if lang in {'zh', 'yue'} and len(current_words) >= 4:
-                # Look for repeated characters or phrases
-                text = current_text.replace(' ', '')
-                for j in range(2, min(6, len(text)//2 + 1)):
-                    for k in range(len(text) - 2*j + 1):
-                        if text[k:k+j] == text[k+j:k+2*j]:
-                            has_repetition = True
-                            break
-                    if has_repetition:
-                        break
-            
-            # Split if conditions are met and we have minimum content
-            min_words = 2 if lang in {'zh', 'ja', 'ko', 'yue'} else 3
-            should_split = (has_punctuation or has_pause_word or has_repetition) and len(current_words) >= min_words
-            
-            if should_split:
+            # Split if punctuation found or at pause words, but ensure minimum length
+            if (has_punctuation or has_pause_word) and len(current_words) >= 3:
                 refined_segments.append({
                     'start': current_segment_start,
                     'end': word['end'],
@@ -975,32 +746,28 @@ def enhanced_punctuation_split(segments):
     return refined_segments
 
 
-def reduce_subtitle_length(segments, sample_rate=16000, vad_segments=None):
+def reduce_subtitle_length(segments, sample_rate=16000, max_duration=4.0, max_chars=60, max_words=10):
     """
-    Main function to reduce subtitle length using multiple sophisticated methods.
+    Main function to reduce subtitle length using multiple methods.
     
     Parameters:
     - segments: List of subtitle segments
     - sample_rate: Audio sample rate
-    - vad_segments: VAD segments for finding natural pauses
+    - max_duration: Maximum duration per segment in seconds
+    - max_chars: Maximum characters per segment
+    - max_words: Maximum words per segment
     
     Returns:
     - List of shortened segments
     """
-    print("Reducing subtitle length with multi-layered approach...")
-    
-    # Step 1: Use VAD to find finer natural breaks within long segments
-    if vad_segments:
-        segments = refine_with_vad_pauses(segments, vad_segments, sample_rate)
-    
-    # Step 2: Split by spaces for languages that don't naturally use spaces
-    segments = split_by_spaces_for_non_spaced_languages(segments)
-    
-    # Step 3: Enhanced punctuation splitting with pause words
+    # Step 1: Enhanced punctuation splitting
     segments = enhanced_punctuation_split(segments)
     
-    # Step 4: Final length-based splitting with language-appropriate limits
-    segments = split_long_segments_by_length(segments)
+    # Step 2: Split by time duration
+    segments = split_long_segments_by_time(segments, max_duration, sample_rate)
+    
+    # Step 3: Split by length (character/word count)
+    segments = split_long_segments_by_length(segments, max_chars, max_words)
     
     return segments
 
@@ -1357,11 +1124,13 @@ if __name__ == "__main__":
             final_subtitles = process_audio_segments(merged_segments, wav, sampling_rate, model_name, whisper_model, detector, vad_timestamps=speech_timestamps)
             clean_timestamps(final_subtitles, audio_length)
 
-            # Reduce subtitle line length - NEW ADDITION with VAD integration
+            # Reduce subtitle line length - NEW ADDITION
             final_subtitles = reduce_subtitle_length(
                 final_subtitles, 
-                sample_rate=sampling_rate,
-                vad_segments=speech_timestamps
+                sample_rate=sampling_rate, 
+                max_duration=4.0,    # Max 4 seconds per line
+                max_chars=60,        # Max 60 characters per line  
+                max_words=10         # Max 10 words per line
             )
 
         except Exception as e:
