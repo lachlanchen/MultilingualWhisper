@@ -6,6 +6,8 @@
 
 A drop‑in subtitle generator built on OpenAI Whisper, extended with precise per‑segment language detection and refinement—perfect for videos containing multiple languages.
 
+For a step‑by‑step walk‑through of the pipeline and the key functions, see `SCRIPT_LOGIC.md`.
+
 ---
 
 ## 🚀 Key Features
@@ -68,6 +70,20 @@ After running you’ll get:
 - `yourvideo.wav` (enhanced audio)  
 - `yourvideo.srt` (timestamped subtitles)  
 - `yourvideo.json` (rich JSON with `start`, `end`, `lang`, `text`, and word‑level timestamps)
+
+---
+
+## 🔌 LazyEdit Integration
+
+This repo is also used as a submodule in LazyEdit. LazyEdit resolves the script path relative to the repo, so it runs the local copy at `whisper_with_lang_detect/vad_lang_subtitle.py`.
+
+Optional LazyEdit env overrides:
+
+```
+LAZYEDIT_WHISPER_SCRIPT=/path/to/LazyEdit/whisper_with_lang_detect/vad_lang_subtitle.py
+LAZYEDIT_WHISPER_MODEL=large-v3
+LAZYEDIT_WHISPER_FALLBACK_MODEL=large-v2
+```
 
 ---
 
