@@ -1,13 +1,13 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/lachlanchen/lachlanchen/main/logos/banner.png" alt="LazyingArt banner" />
-</p>
+[![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
 
 OpenAI Whisper をベースにした、差し替え可能な字幕生成ツールです。複数言語が混在する動画向けに、セグメント単位の高精度な言語検出とリファイン処理を拡張しています。
+
+> 言語を意識したセグメンテーションで、実運用の混在言語メディアから、よりクリーンな多言語字幕を生成します。
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
@@ -15,6 +15,8 @@ OpenAI Whisper をベースにした、差し替え可能な字幕生成ツー�
 ![Lang Detect](https://img.shields.io/badge/Language%20Detection-Lingua-0E8A16)
 ![FFmpeg](https://img.shields.io/badge/Media-FFmpeg-FF6F00?logo=ffmpeg&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+![Interface](https://img.shields.io/badge/Interface-CLI-1F6FEB)
+![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
 
 ---
 
@@ -27,6 +29,7 @@ OpenAI Whisper をベースにした、差し替え可能な字幕生成ツー�
 - [プロジェクト構成](#-プロジェクト構成)
 - [前提条件](#-前提条件)
 - [インストール](#-インストール)
+- [クイックスタート](#-クイックスタート)
 - [使い方](#-使い方)
 - [設定](#-設定)
 - [出力フォーマット](#-出力フォーマット)
@@ -35,7 +38,7 @@ OpenAI Whisper をベースにした、差し替え可能な字幕生成ツー�
 - [トラブルシューティング](#-トラブルシューティング)
 - [既知の制約と前提](#-既知の制約と前提)
 - [ロードマップ](#-ロードマップ)
-- [サポート](#-サポート)
+- [Support](#-support)
 - [謝辞](#-謝辞)
 - [コントリビュート](#-コントリビュート)
 - [ライセンス](#-ライセンス)
@@ -67,19 +70,19 @@ OpenAI Whisper をベースにした、差し替え可能な字幕生成ツー�
 
 ## 🚀 主な機能
 
-- **Silero VAD -> Whisper パイプライン**  
+- **Silero VAD -> Whisper パイプライン**
   Voice Activity Detection (VAD) で音声を発話セグメントに分割し、各チャンクを Whisper で文字起こしします。
 
-- **きめ細かな言語検出**  
+- **きめ細かな言語検出**
   Whisper の言語検出に加えて [Lingua](https://github.com/pemistahl/lingua-java) を使用し、各セグメント（単語単位を含む）に ISO 言語コード（`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...）を付与します。
 
-- **インテリジェントなセグメント整形**  
+- **インテリジェントなセグメント整形**
   タイムスタンプを補正してギャップや重なりを解消します。句読点ベースの分割で長い文字起こしをカンマ・ピリオド・疑問符などで区切り、VAD マージで単語を VAD ブロックへ再整列して、より読みやすい字幕にします。さらに言語別の文字数制限を考慮した分割も適用します。
 
-- **多言語字幕出力**  
+- **多言語字幕出力**
   `.srt` と `.json` の両方を出力し、セグメントごとの言語タグを保持します。これにより、後段のプレイヤーやエディタで言語別のスタイル適用やフィルタリングが可能です。
 
-- **堅牢なメディア処理**  
+- **堅牢なメディア処理**
   FFmpeg で音声を自動抽出・正規化し、壊れたコンテナの修復も試みます。さらに動的正規化（`dynaudnorm`）で文字起こし品質を高めます。
 
 ---
@@ -195,6 +198,27 @@ pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 ```
 
 加えて、システムレベルで FFmpeg がインストールされていることを確認してください。
+
+---
+
+## ⚡ クイックスタート
+
+クローンから字幕生成まで最短で進める場合:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install torch torchaudio openai-whisper lingua-language-detector tqdm
+python vad_lang_subtitle.py -t path/to/video.mp4 --whisper-model small --force
+```
+
+ヒント: 反復中は `small` を使い、最終品質を出す段階で `large` に切り替えると効率的です。
+
+入力メディアの隣に生成される成果物:
+
+- `*.wav` 抽出・正規化済み音声
+- `*.srt` プレイヤー/エディタ向け字幕ファイル
+- `*.json` 構造化された多言語字幕メタデータ
 
 ---
 
@@ -360,9 +384,13 @@ python vad_lang_subtitle.py -t data/<your_media>.mp4 --whisper-model small --for
 
 ---
 
-## 💖 サポート
+## ❤️ Support
 
-このプロジェクトが役立った場合、以下から開発を支援できます。
+| Donate | PayPal | Stripe |
+|---|---|---|
+| [![Donate](https://img.shields.io/badge/Donate-LazyingArt-0EA5E9?style=for-the-badge&logo=ko-fi&logoColor=white)](https://chat.lazying.art/donate) | [![PayPal](https://img.shields.io/badge/PayPal-RongzhouChen-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/RongzhouChen) | [![Stripe](https://img.shields.io/badge/Stripe-Donate-635BFF?style=for-the-badge&logo=stripe&logoColor=white)](https://buy.stripe.com/aFadR8gIaflgfQV6T4fw400) |
+
+Additional support/community links:
 
 - GitHub Sponsors: https://github.com/sponsors/lachlanchen
 - Personal site: https://lazying.art

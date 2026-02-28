@@ -1,13 +1,13 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/lachlanchen/lachlanchen/main/logos/banner.png" alt="LazyingArt banner" />
-</p>
+[![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
 
-Trình tạo phụ đề thay thế trực tiếp dựa trên OpenAI Whisper, được mở rộng với khả năng phát hiện ngôn ngữ chính xác theo từng đoạn và tinh chỉnh cho video chứa nhiều ngôn ngữ.
+Một trình tạo phụ đề thay thế trực tiếp, xây dựng trên OpenAI Whisper, được mở rộng với khả năng phát hiện ngôn ngữ chính xác theo từng đoạn và tinh chỉnh cho video chứa nhiều ngôn ngữ.
+
+> Tạo phụ đề đa ngôn ngữ sạch hơn từ media thực tế có trộn nhiều ngôn ngữ, nhờ cơ chế phân đoạn theo ngôn ngữ.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
@@ -15,6 +15,8 @@ Trình tạo phụ đề thay thế trực tiếp dựa trên OpenAI Whisper, đ
 ![Lang Detect](https://img.shields.io/badge/Language%20Detection-Lingua-0E8A16)
 ![FFmpeg](https://img.shields.io/badge/Media-FFmpeg-FF6F00?logo=ffmpeg&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+![Interface](https://img.shields.io/badge/Interface-CLI-1F6FEB)
+![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
 
 ---
 
@@ -27,6 +29,7 @@ Trình tạo phụ đề thay thế trực tiếp dựa trên OpenAI Whisper, đ
 - [Cấu trúc dự án](#-cấu-trúc-dự-án)
 - [Điều kiện tiên quyết](#-điều-kiện-tiên-quyết)
 - [Cài đặt](#-cài-đặt)
+- [Bắt đầu nhanh](#-bắt-đầu-nhanh)
 - [Cách dùng](#-cách-dùng)
 - [Cấu hình](#-cấu-hình)
 - [Định dạng đầu ra](#-định-dạng-đầu-ra)
@@ -44,14 +47,14 @@ Trình tạo phụ đề thay thế trực tiếp dựa trên OpenAI Whisper, đ
 
 ## ✨ Tổng quan
 
-`MultilingualWhisper` là một pipeline CLI Python xoay quanh [`vad_lang_subtitle.py`](vad_lang_subtitle.py). Công cụ này kết hợp:
+`MultilingualWhisper` là một pipeline CLI Python tập trung quanh [`vad_lang_subtitle.py`](vad_lang_subtitle.py). Công cụ kết hợp:
 
 - Silero VAD để phân đoạn tiếng nói
 - OpenAI Whisper để chép lời và dự đoán ngôn ngữ ban đầu
 - Lingua để tinh chỉnh ngôn ngữ dựa trên văn bản
 - FFmpeg để trích xuất, chuẩn hóa và xử lý media
 
-Đầu ra chính là tệp phụ đề `.srt` và `.json`, cùng tệp âm thanh `.wav` đã trích xuất và chuẩn hóa.
+Đầu ra chính là các tệp phụ đề `.srt` và `.json`, cùng tệp âm thanh `.wav` đã trích xuất và chuẩn hóa.
 
 ### Nhìn nhanh
 
@@ -61,26 +64,26 @@ Trình tạo phụ đề thay thế trực tiếp dựa trên OpenAI Whisper, đ
 | Đầu vào | Video/âm thanh được FFmpeg hỗ trợ |
 | Đầu ra | `*.wav`, `*.srt`, `*.json` |
 | Luồng cốt lõi | VAD -> Whisper -> Lingua -> tinh chỉnh |
-| Tình huống sử dụng điển hình | Tạo phụ đề cho nội dung đa ngôn ngữ |
+| Trường hợp dùng điển hình | Tạo phụ đề đa ngôn ngữ |
 
 ---
 
 ## 🚀 Tính năng chính
 
 - **Pipeline Silero VAD -> Whisper**
-  Voice Activity Detection (VAD) chia âm thanh thành các đoạn tiếng nói, sau đó Whisper chép lời từng đoạn.
+  Voice Activity Detection (VAD) chia âm thanh thành các đoạn tiếng nói, rồi Whisper chép lời từng đoạn.
 
 - **Phát hiện ngôn ngữ chi tiết**
-  Sử dụng [Lingua](https://github.com/pemistahl/lingua-java) cùng bộ phát hiện của Whisper để gắn nhãn từng đoạn (kể cả từng từ) bằng mã ngôn ngữ ISO (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...).
+  Dùng [Lingua](https://github.com/pemistahl/lingua-java) cùng bộ phát hiện của Whisper để gắn nhãn cho mọi đoạn (kể cả từng từ) bằng mã ngôn ngữ ISO (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...).
 
 - **Tinh chỉnh đoạn thông minh**
-  Dọn dẹp timestamp để không có khoảng trống hoặc chồng lấn. Tách theo dấu câu để cắt bản chép dài tại dấu phẩy, dấu chấm, dấu hỏi, v.v. Gộp lại theo VAD để căn từ về các khối VAD giúp phụ đề mượt hơn. Phân đoạn theo độ dài áp dụng giới hạn riêng theo từng ngôn ngữ.
+  Làm sạch timestamp để tránh khoảng trống hoặc chồng lấn. Tách theo dấu câu để cắt bản chép dài tại dấu phẩy, chấm, hỏi, v.v. Gộp theo VAD để căn từ về các khối VAD cho phụ đề mượt hơn. Phân đoạn theo độ dài áp dụng giới hạn riêng theo từng ngôn ngữ.
 
 - **Phụ đề đa ngôn ngữ**
-  Xuất cả `.srt` và `.json`, giữ nhãn ngôn ngữ theo từng đoạn để bạn có thể tùy biến kiểu hiển thị hoặc lọc theo ngôn ngữ ở player/trình biên tập phía sau.
+  Xuất đồng thời `.srt` và `.json`, giữ nhãn ngôn ngữ theo từng đoạn để bạn có thể tùy biến hiển thị hoặc lọc theo ngôn ngữ ở player/trình biên tập phía sau.
 
-- **Xử lý media ổn định**
-  Tự động trích xuất và chuẩn hóa âm thanh bằng FFmpeg, thử sửa container hỏng, và áp dụng chuẩn hóa động (`dynaudnorm`) để bản chép rõ hơn.
+- **Xử lý media bền vững**
+  Tự động trích xuất và chuẩn hóa âm thanh bằng FFmpeg, cố gắng sửa container lỗi, và áp dụng chuẩn hóa động (`dynaudnorm`) để bản chép rõ hơn.
 
 ---
 
@@ -105,7 +108,7 @@ Luồng chạy chính trong `vad_lang_subtitle.py`:
 4. Tải Silero VAD (`torch.hub`) và mô hình Whisper.
 5. Chép lời lượt đầu trên các đoạn VAD.
 6. Gộp/tinh chỉnh đoạn, rồi chép lời lượt hai trên các khoảng đã gộp.
-7. Áp dụng rút gọn độ dài phụ đề và dọn dẹp timestamp.
+7. Áp dụng rút gọn độ dài phụ đề và làm sạch timestamp.
 8. Lưu `.srt` và `.json`.
 
 ---
@@ -138,22 +141,22 @@ Luồng chạy chính trong `vad_lang_subtitle.py`:
 └── .auto-readme-work/                  # Tạo phẩm không gian làm việc của quá trình sinh README
 ```
 
-> ⚠️ Lưu ý: README trước đó có nhắc đến `requirements.txt`, nhưng hiện tại tệp này không có ở thư mục gốc repository.
+> ⚠️ Lưu ý: README trước đây có nhắc đến `requirements.txt`, nhưng hiện tại tệp này không có ở thư mục gốc repository.
 
 ---
 
 ## ✅ Điều kiện tiên quyết
 
 - Python `3.10+` (đã kiểm tra trên môi trường 3.x hiện đại)
-- `ffmpeg` đã cài và có trên `PATH`
+- `ffmpeg` đã cài đặt và có trên `PATH`
 - CPU/GPU + RAM đủ cho mô hình Whisper bạn chọn (với `large`, rất nên dùng GPU)
 - Có Internet ở lần chạy đầu để tải trọng số mô hình Whisper và tài nguyên Silero VAD (`torch.hub`)
 
-Các gói Python được script sử dụng gồm:
+Các gói Python script đang dùng gồm:
 
 - `torch`
 - `torchaudio`
-- `whisper` (gói Python của OpenAI Whisper)
+- `whisper` (gói Python OpenAI Whisper)
 - `lingua-language-detector`
 - `tqdm`
 
@@ -188,13 +191,34 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Nếu `requirements.txt` vẫn chưa có trong bản checkout của bạn, hãy cài thủ công các dependency runtime cốt lõi:
+Nếu bản checkout của bạn vẫn chưa có `requirements.txt`, hãy cài thủ công các dependency runtime cốt lõi:
 
 ```bash
 pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 ```
 
 Và đảm bảo FFmpeg đã được cài ở cấp hệ thống.
+
+---
+
+## ⚡ Bắt đầu nhanh
+
+Nếu bạn muốn đi từ clone đến phụ đề theo cách nhanh nhất:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install torch torchaudio openai-whisper lingua-language-detector tqdm
+python vad_lang_subtitle.py -t path/to/video.mp4 --whisper-model small --force
+```
+
+Mẹo: dùng `small` khi lặp nhanh, sau đó chuyển sang `large` cho chất lượng cuối cùng.
+
+Các tệp tạo ra dự kiến bên cạnh media đầu vào:
+
+- `*.wav` âm thanh trích xuất đã chuẩn hóa
+- `*.srt` tệp phụ đề cho player/trình biên tập
+- `*.json` metadata phụ đề đa ngôn ngữ có cấu trúc
 
 ---
 
@@ -233,7 +257,7 @@ Cấu hình hiện tại chủ yếu được điều khiển bởi CLI và giá
 | Tần số lấy mẫu xử lý | Hard-code `16000` cho xử lý VAD/chép lời |
 | Trích xuất FFmpeg | WAV mono, `44100 Hz`, với `dynaudnorm=f=100` |
 | Bộ phát hiện Lingua | Khởi tạo cho `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` trong luồng chính |
-| Mặc định helper lọc phía Whisper | Bao gồm `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
+| Mặc định helper lọc phía Whisper | Gồm `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
 
 Ghi chú giả định: danh sách ngôn ngữ trong mặc định helper và cấu hình bộ phát hiện chính chưa hoàn toàn đồng nhất; README này giữ nguyên hành vi hiện được triển khai.
 
@@ -306,7 +330,7 @@ done
 
 ## 🧭 Ghi chú phát triển
 
-- Script hoạt động chuẩn hiện tại là `vad_lang_subtitle.py`.
+- Script chuẩn hiện tại là `vad_lang_subtitle.py`.
 - Các tệp lịch sử (`*.old`, `*.shorterlength*`, `archived/`) hữu ích để tham khảo nhưng có vẻ không phải bản chuẩn.
 - Hiện chưa có khung đóng gói dự án (`pyproject.toml`, `setup.py`) và chưa commit bộ CI/test.
 - `data/` chứa các tạo phẩm media mẫu lớn; cần lưu ý kích thước repository và dung lượng đĩa cục bộ khi thử nghiệm.
@@ -351,7 +375,7 @@ Dùng mô hình nhỏ hơn (`tiny`/`base`/`small`) khi lặp nhanh, sau đó chu
 ## 🗺 Lộ trình
 
 - Thêm và duy trì `requirements.txt` hoặc `pyproject.toml` có ghim phiên bản.
-- Thêm test tự động cho logic phân đoạn và dọn dẹp timestamp.
+- Thêm test tự động cho logic phân đoạn và làm sạch timestamp.
 - Thêm tài liệu benchmark và đánh giá chất lượng cho các trường hợp biên đa ngôn ngữ.
 - Thêm hỗ trợ tệp cấu hình tùy chọn thay cho hành vi chỉ dựa vào mặc định trong mã.
 - Mở rộng bộ README i18n trong `i18n/` và giữ đồng bộ thanh chuyển ngôn ngữ.
@@ -360,13 +384,17 @@ Dùng mô hình nhỏ hơn (`tiny`/`base`/`small`) khi lặp nhanh, sau đó chu
 
 ---
 
-## 💖 Hỗ trợ
+## ❤️ Support
 
-Nếu dự án này hữu ích với bạn, bạn có thể hỗ trợ phát triển qua:
+| Donate | PayPal | Stripe |
+|---|---|---|
+| [![Donate](https://img.shields.io/badge/Donate-LazyingArt-0EA5E9?style=for-the-badge&logo=ko-fi&logoColor=white)](https://chat.lazying.art/donate) | [![PayPal](https://img.shields.io/badge/PayPal-RongzhouChen-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/RongzhouChen) | [![Stripe](https://img.shields.io/badge/Stripe-Donate-635BFF?style=for-the-badge&logo=stripe&logoColor=white)](https://buy.stripe.com/aFadR8gIaflgfQV6T4fw400) |
+
+Liên kết hỗ trợ/cộng đồng bổ sung:
 
 - GitHub Sponsors: https://github.com/sponsors/lachlanchen
 - Trang cá nhân: https://lazying.art
-- Chat/community: https://chat.lazying.art
+- Chat/cộng đồng: https://chat.lazying.art
 - Trung tâm ý tưởng/dự án: https://onlyideas.art
 
 ---

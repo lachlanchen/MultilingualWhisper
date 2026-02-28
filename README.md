@@ -1,13 +1,13 @@
 [English](README.md) · [العربية](i18n/README.ar.md) · [Español](i18n/README.es.md) · [Français](i18n/README.fr.md) · [日本語](i18n/README.ja.md) · [한국어](i18n/README.ko.md) · [Tiếng Việt](i18n/README.vi.md) · [中文 (简体)](i18n/README.zh-Hans.md) · [中文（繁體）](i18n/README.zh-Hant.md) · [Deutsch](i18n/README.de.md) · [Русский](i18n/README.ru.md)
 
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/lachlanchen/lachlanchen/main/logos/banner.png" alt="LazyingArt banner" />
-</p>
+[![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
 
 A drop-in subtitle generator built on OpenAI Whisper, extended with precise per-segment language detection and refinement for videos containing mixed languages.
+
+> Generate cleaner multilingual subtitles from real-world mixed-language media with language-aware segmentation.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
@@ -15,6 +15,8 @@ A drop-in subtitle generator built on OpenAI Whisper, extended with precise per-
 ![Lang Detect](https://img.shields.io/badge/Language%20Detection-Lingua-0E8A16)
 ![FFmpeg](https://img.shields.io/badge/Media-FFmpeg-FF6F00?logo=ffmpeg&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+![Interface](https://img.shields.io/badge/Interface-CLI-1F6FEB)
+![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
 
 ---
 
@@ -27,6 +29,7 @@ A drop-in subtitle generator built on OpenAI Whisper, extended with precise per-
 - [Project Structure](#-project-structure)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
+- [Quick Start](#-quick-start)
 - [Usage](#-usage)
 - [Configuration](#-configuration)
 - [Output Format](#-output-format)
@@ -198,6 +201,27 @@ And ensure FFmpeg is installed at system level.
 
 ---
 
+## ⚡ Quick Start
+
+If you want the fastest path from clone to subtitles:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install torch torchaudio openai-whisper lingua-language-detector tqdm
+python vad_lang_subtitle.py -t path/to/video.mp4 --whisper-model small --force
+```
+
+Tip: use `small` while iterating, then switch to `large` for final quality.
+
+Expected artifacts next to your input media:
+
+- `*.wav` normalized extracted audio
+- `*.srt` subtitle file for players/editors
+- `*.json` structured multilingual subtitle metadata
+
+---
+
 ## 🛠 Usage
 
 ```bash
@@ -360,9 +384,15 @@ Use a smaller model (`tiny`/`base`/`small`) while iterating, then switch to `lar
 
 ---
 
-## 💖 Support
+## ❤️ Support
 
-If this project helps you, you can support development via:
+If this project saves you time, contributions help fund maintenance and future improvements.
+
+| Donate | PayPal | Stripe |
+|---|---|---|
+| [![Donate](https://img.shields.io/badge/Donate-LazyingArt-0EA5E9?style=for-the-badge&logo=ko-fi&logoColor=white)](https://chat.lazying.art/donate) | [![PayPal](https://img.shields.io/badge/PayPal-RongzhouChen-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/RongzhouChen) | [![Stripe](https://img.shields.io/badge/Stripe-Donate-635BFF?style=for-the-badge&logo=stripe&logoColor=white)](https://buy.stripe.com/aFadR8gIaflgfQV6T4fw400) |
+
+Additional support/community links:
 
 - GitHub Sponsors: https://github.com/sponsors/lachlanchen
 - Personal site: https://lazying.art

@@ -1,13 +1,13 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/lachlanchen/lachlanchen/main/logos/banner.png" alt="LazyingArt banner" />
-</p>
+[![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
 
-مولّد ترجمات فرعية جاهز للاستخدام مبني على OpenAI Whisper، مع توسعة لاكتشاف اللغة بدقة على مستوى كل مقطع وتحسين النتائج للفيديوهات التي تحتوي على لغات مختلطة.
+مولّد ترجمة فرعية جاهز للاستخدام مبني على OpenAI Whisper، مع توسعة لاكتشاف اللغة بدقة على مستوى كل مقطع وتحسين النتائج للفيديوهات التي تحتوي على لغات مختلطة.
+
+> أنشئ ترجمات فرعية متعددة اللغات أنظف من وسائط العالم الحقيقي المختلطة لغويًا، عبر تقسيم واعٍ باللغة.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
@@ -15,6 +15,8 @@
 ![Lang Detect](https://img.shields.io/badge/Language%20Detection-Lingua-0E8A16)
 ![FFmpeg](https://img.shields.io/badge/Media-FFmpeg-FF6F00?logo=ffmpeg&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+![Interface](https://img.shields.io/badge/Interface-CLI-1F6FEB)
+![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
 
 ---
 
@@ -27,15 +29,16 @@
 - [هيكل المشروع](#-هيكل-المشروع)
 - [المتطلبات المسبقة](#-المتطلبات-المسبقة)
 - [التثبيت](#-التثبيت)
+- [البدء السريع](#-البدء-السريع)
 - [الاستخدام](#-الاستخدام)
 - [الإعدادات](#-الإعدادات)
-- [صيغة الإخراج](#-صيغة-الإخراج)
+- [تنسيق الإخراج](#-تنسيق-الإخراج)
 - [أمثلة](#-أمثلة)
 - [ملاحظات التطوير](#-ملاحظات-التطوير)
 - [استكشاف الأخطاء وإصلاحها](#-استكشاف-الأخطاء-وإصلاحها)
 - [القيود والافتراضات المعروفة](#-القيود-والافتراضات-المعروفة)
 - [خارطة الطريق](#-خارطة-الطريق)
-- [الدعم](#-الدعم)
+- [الدعم](#-support)
 - [شكر وتقدير](#-شكر-وتقدير)
 - [المساهمة](#-المساهمة)
 - [الترخيص](#-الترخيص)
@@ -44,14 +47,14 @@
 
 ## ✨ نظرة عامة
 
-`MultilingualWhisper` هو مسار CLI بلغة Python يتمحور حول [`vad_lang_subtitle.py`](vad_lang_subtitle.py). وهو يجمع بين:
+`MultilingualWhisper` هو مسار CLI بلغة Python يتمحور حول [`vad_lang_subtitle.py`](vad_lang_subtitle.py). ويجمع بين:
 
 - Silero VAD لتجزئة الكلام
 - OpenAI Whisper للتفريغ النصي والتنبؤ الأولي باللغة
-- Lingua لتحسين تحديد اللغة اعتمادًا على النص
+- Lingua لتحسين تحديد اللغة بالاعتماد على النص
 - FFmpeg للاستخراج والتطبيع ومعالجة الوسائط
 
-المخرجات الأساسية هي ملفات ترجمة فرعية بصيغة `.srt` و`.json`، بالإضافة إلى صوت `.wav` مُستخرج ومُطبّع.
+المخرجات الأساسية هي ملفات ترجمة فرعية بصيغة `.srt` و`.json`، بالإضافة إلى ملف صوت `.wav` مُستخرج ومُطبّع.
 
 ### لمحة سريعة
 
@@ -61,7 +64,7 @@
 | الإدخال | فيديو/صوت مدعوم بواسطة FFmpeg |
 | الإخراج | `*.wav`, `*.srt`, `*.json` |
 | التدفق الأساسي | VAD -> Whisper -> Lingua -> refinement |
-| حالة الاستخدام المعتادة | إنشاء ترجمات فرعية متعددة اللغات |
+| حالة الاستخدام المعتادة | إنشاء ترجمة فرعية متعددة اللغات |
 
 ---
 
@@ -74,10 +77,10 @@
   يستخدم [Lingua](https://github.com/pemistahl/lingua-java) إلى جانب كاشف Whisper الداخلي لوَسم كل مقطع (وحتى الكلمات المفردة) برموز لغة ISO مثل (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...).
 
 - **تحسين ذكي للمقاطع**
-  تنظيف الطوابع الزمنية يضمن عدم وجود فجوات أو تداخلات. تقسيم علامات الترقيم يفصل النصوص الطويلة عند الفواصل والنقاط وعلامات الاستفهام وغيرها. دمج VAD يعيد محاذاة الكلمات مع كتل VAD للحصول على ترجمات أكثر سلاسة. كما يُطبَّق تقسيم يعتمد على الطول بحدود خاصة بكل لغة.
+  يضمن تنظيف الطوابع الزمنية عدم وجود فجوات أو تداخلات. تقسيم علامات الترقيم يفصل النصوص الطويلة عند الفواصل والنقاط وعلامات الاستفهام وغيرها. دمج VAD يعيد محاذاة الكلمات مع كتل VAD للحصول على ترجمات أكثر سلاسة. كما يُطبَّق تقسيم يعتمد على الطول بحدود خاصة بكل لغة.
 
-- **ترجمات فرعية متعددة اللغات**
-  يُنتج كلًا من `.srt` و`.json` مع الحفاظ على وسوم اللغة لكل مقطع، بحيث يمكنك تنسيقها أو تصفيتها حسب اللغة في المشغلات أو أدوات التحرير اللاحقة.
+- **ترجمة فرعية متعددة اللغات**
+  يخرج الملفين `.srt` و`.json` مع الحفاظ على وسوم اللغة لكل مقطع، بحيث يمكنك التنسيق أو التصفية حسب اللغة في المشغلات أو أدوات التحرير اللاحقة.
 
 - **معالجة وسائط قوية**
   يستخرج الصوت ويطبّعه تلقائيًا عبر FFmpeg، ويحاول إصلاح الحاويات المعطوبة، ويطبق التطبيع الديناميكي (`dynaudnorm`) للحصول على تفريغ أوضح.
@@ -138,7 +141,7 @@ Input media
 └── .auto-readme-work/                  # README generation workspace artifacts
 ```
 
-> ⚠️ ملاحظة: أشار README السابق إلى `requirements.txt`، لكنه غير موجود حاليًا في جذر المستودع.
+> ⚠️ ملاحظة: كان README السابق يشير إلى `requirements.txt`، لكنه غير موجود حاليًا في جذر المستودع.
 
 ---
 
@@ -198,6 +201,27 @@ pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 
 ---
 
+## ⚡ البدء السريع
+
+إذا أردت أسرع طريق من الاستنساخ إلى إنتاج الترجمة الفرعية:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install torch torchaudio openai-whisper lingua-language-detector tqdm
+python vad_lang_subtitle.py -t path/to/video.mp4 --whisper-model small --force
+```
+
+نصيحة: استخدم `small` أثناء التكرار، ثم انتقل إلى `large` للحصول على الجودة النهائية.
+
+المخرجات المتوقعة بجانب ملف الوسائط المدخل:
+
+- `*.wav` صوت مُستخرج ومُطبّع
+- `*.srt` ملف ترجمة فرعية للمشغلات/المحررات
+- `*.json` بيانات وصفية منظمة للترجمة متعددة اللغات
+
+---
+
 ## 🛠 الاستخدام
 
 ```bash
@@ -218,7 +242,7 @@ python vad_lang_subtitle.py \
 ### سلوك المعالجة
 
 - أسماء المخرجات تُشتق من المسار الأساسي للمدخل.
-- عند إدخال `input.mp4`، تكون المخرجات `input.wav` (صوت مُطبّع)، و`input.srt` (ترجمات زمنية)، و`input.json` (بيانات وصفية تشمل `start`, `end`, `lang`, `text`، وقد تتضمن توقيتات الكلمات اختياريًا).
+- عند إدخال `input.mp4`، تكون المخرجات `input.wav` (صوت مُطبّع)، و`input.srt` (ترجمة زمنية)، و`input.json` (بيانات وصفية تشمل `start`, `end`, `lang`, `text`، وقد تتضمن توقيتات الكلمات اختياريًا).
 - وجود `.srt` أو `.json` مسبقًا يؤدي إلى التخطي ما لم يتم تمرير `--force`.
 
 ---
@@ -235,11 +259,11 @@ python vad_lang_subtitle.py \
 | Lingua detector | Initialized for `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` in main flow |
 | Whisper-side filtering helper defaults | Includes `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
 
-ملاحظة افتراضية: قوائم اللغات في القيم الافتراضية للدوال المساعدة وإعداد الكاشف الرئيسي ليست متطابقة بالكامل؛ هذا README يحافظ على السلوك الحالي كما هو مطبَّق.
+ملاحظة افتراضية: قوائم اللغات في القيم الافتراضية للدوال المساعدة وإعداد الكاشف الرئيسي ليست متطابقة بالكامل؛ هذا README يحافظ على السلوك الحالي كما هو مطبّق.
 
 ---
 
-## 📦 صيغة الإخراج
+## 📦 تنسيق الإخراج
 
 تكتب الأداة ملفي ترجمة فرعية لكل ملف وسائط مدخل:
 
@@ -308,7 +332,7 @@ done
 
 - السكربت النشط والمعتمد حاليًا هو `vad_lang_subtitle.py`.
 - الملفات التاريخية (`*.old`, `*.shorterlength*`, `archived/`) مفيدة كمرجع لكنها تبدو غير معتمدة كأساس.
-- لا توجد حاليًا بنية مشروع مُحزّمة (`pyproject.toml`, `setup.py`) ولا توجد مجموعة اختبارات/تكامل (CI) مُضافة.
+- لا توجد حاليًا بنية مشروع مُحزّمة (`pyproject.toml`, `setup.py`) ولا توجد مجموعة CI/اختبارات مُضافة.
 - يحتوي `data/` على وسائط عيّنة كبيرة؛ انتبه إلى حجم المستودع واستهلاك مساحة القرص أثناء التجارب.
 - الدالة `clean_subtitles_dict()` موجودة في الكود لكنها غير مستدعاه حاليًا في المسار الرئيسي.
 - `--force` هي الآلية الحالية لضمان إعادة توليد المخرجات أثناء الضبط التكراري.
@@ -360,9 +384,13 @@ python vad_lang_subtitle.py -t data/<your_media>.mp4 --whisper-model small --for
 
 ---
 
-## 💖 الدعم
+## ❤️ Support
 
-إذا كان هذا المشروع مفيدًا لك، يمكنك دعم التطوير عبر:
+| Donate | PayPal | Stripe |
+|---|---|---|
+| [![Donate](https://img.shields.io/badge/Donate-LazyingArt-0EA5E9?style=for-the-badge&logo=ko-fi&logoColor=white)](https://chat.lazying.art/donate) | [![PayPal](https://img.shields.io/badge/PayPal-RongzhouChen-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/RongzhouChen) | [![Stripe](https://img.shields.io/badge/Stripe-Donate-635BFF?style=for-the-badge&logo=stripe&logoColor=white)](https://buy.stripe.com/aFadR8gIaflgfQV6T4fw400) |
+
+روابط دعم/مجتمع إضافية:
 
 - GitHub Sponsors: https://github.com/sponsors/lachlanchen
 - الموقع الشخصي: https://lazying.art

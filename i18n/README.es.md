@@ -1,13 +1,13 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/lachlanchen/lachlanchen/main/logos/banner.png" alt="LazyingArt banner" />
-</p>
+[![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
 
-Un generador de subtítulos listo para usar, construido sobre OpenAI Whisper y ampliado con detección y refinamiento precisos del idioma por segmento para videos con idiomas mezclados.
+Un generador de subtítulos listo para usar, basado en OpenAI Whisper y ampliado con detección y refinamiento precisos del idioma por segmento para videos con idiomas mixtos.
+
+> Genera subtítulos multilingües más limpios a partir de contenido real con mezcla de idiomas, con segmentación consciente del idioma.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
@@ -15,29 +15,32 @@ Un generador de subtítulos listo para usar, construido sobre OpenAI Whisper y a
 ![Lang Detect](https://img.shields.io/badge/Language%20Detection-Lingua-0E8A16)
 ![FFmpeg](https://img.shields.io/badge/Media-FFmpeg-FF6F00?logo=ffmpeg&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+![Interface](https://img.shields.io/badge/Interface-CLI-1F6FEB)
+![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
 
 ---
 
-## Tabla de Contenidos
+## Tabla de contenidos
 
 - [Resumen](#-resumen)
-- [Vista Rápida](#vista-rápida)
-- [Funciones Principales](#-funciones-principales)
-- [Flujo del Pipeline](#-flujo-del-pipeline)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
-- [Requisitos Previos](#-requisitos-previos)
+- [Vista rápida](#vista-rápida)
+- [Características clave](#-características-clave)
+- [Flujo del pipeline](#-flujo-del-pipeline)
+- [Estructura del proyecto](#-estructura-del-proyecto)
+- [Prerrequisitos](#-prerrequisitos)
 - [Instalación](#-instalación)
+- [Inicio rápido](#-inicio-rápido)
 - [Uso](#-uso)
-- [Configuración](#-configuración)
-- [Formato de Salida](#-formato-de-salida)
+- [Configuración](#️-configuración)
+- [Formato de salida](#-formato-de-salida)
 - [Ejemplos](#-ejemplos)
-- [Notas de Desarrollo](#-notas-de-desarrollo)
-- [Solución de Problemas](#-solución-de-problemas)
-- [Limitaciones y Supuestos Conocidos](#-limitaciones-y-supuestos-conocidos)
-- [Hoja de Ruta](#-hoja-de-ruta)
-- [Soporte](#-soporte)
+- [Notas de desarrollo](#-notas-de-desarrollo)
+- [Solución de problemas](#-solución-de-problemas)
+- [Limitaciones y supuestos conocidos](#️-limitaciones-y-supuestos-conocidos)
+- [Hoja de ruta](#-hoja-de-ruta)
+- [Support](#-support)
 - [Agradecimientos](#-agradecimientos)
-- [Contribuir](#-contribuir)
+- [Contribuciones](#-contribuciones)
 - [Licencia](#-licencia)
 
 ---
@@ -48,43 +51,43 @@ Un generador de subtítulos listo para usar, construido sobre OpenAI Whisper y a
 
 - Silero VAD para segmentación de voz
 - OpenAI Whisper para transcripción y predicción inicial de idioma
-- Lingua para refinamiento del idioma basado en texto
-- FFmpeg para extracción, normalización y manejo multimedia
+- Lingua para refinamiento de idioma basado en texto
+- FFmpeg para extracción, normalización y manejo de medios
 
-Las salidas principales son archivos de subtítulos en `.srt` y `.json`, además de audio `.wav` extraído y normalizado.
+Las salidas principales son archivos de subtítulos `.srt` y `.json`, además de audio `.wav` extraído y normalizado.
 
-### Vista Rápida
+### Vista rápida
 
 | Elemento | Detalles |
 |---|---|
 | Punto de entrada principal | `vad_lang_subtitle.py` |
 | Entrada | Video/audio compatible con FFmpeg |
 | Salida | `*.wav`, `*.srt`, `*.json` |
-| Flujo principal | VAD -> Whisper -> Lingua -> refinamiento |
-| Caso de uso típico | Generación de subtítulos en idiomas mixtos |
+| Flujo central | VAD -> Whisper -> Lingua -> refinamiento |
+| Caso de uso típico | Generación de subtítulos con idiomas mixtos |
 
 ---
 
-## 🚀 Funciones Principales
+## 🚀 Características clave
 
 - **Pipeline Silero VAD -> Whisper**
-  La Detección de Actividad de Voz (VAD) divide el audio en segmentos de voz y luego Whisper transcribe cada fragmento.
+  La detección de actividad de voz (VAD) divide el audio en segmentos de voz, y luego Whisper transcribe cada fragmento.
 
 - **Detección de idioma de grano fino**
   Usa [Lingua](https://github.com/pemistahl/lingua-java) junto con el detector propio de Whisper para etiquetar cada segmento (incluso palabras individuales) con códigos de idioma ISO (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...).
 
 - **Refinamiento inteligente de segmentos**
-  La limpieza de marcas de tiempo garantiza que no haya huecos ni solapamientos. La división por puntuación corta transcripciones largas en comas, puntos, signos de interrogación, etc. La fusión VAD realinea palabras con bloques VAD para subtítulos más fluidos. La segmentación sensible a longitud aplica límites específicos por idioma.
+  La limpieza de marcas de tiempo garantiza que no haya huecos ni solapamientos. Las divisiones por puntuación cortan transcripciones largas en comas, puntos, signos de interrogación, etc. La fusión con VAD vuelve a alinear las palabras con los bloques VAD para subtítulos más fluidos. La segmentación sensible a longitud aplica límites específicos por idioma.
 
 - **Subtítulos multilingües**
-  Genera tanto `.srt` como `.json`, conservando etiquetas de idioma por segmento para poder aplicar estilos o filtrar por idioma en reproductores o editores posteriores.
+  Genera `.srt` y `.json`, preservando etiquetas de idioma por segmento para que puedas aplicar estilos o filtros por idioma en reproductores o editores posteriores.
 
-- **Manejo multimedia robusto**
-  Extrae y normaliza audio automáticamente mediante FFmpeg, intenta reparar contenedores dañados y aplica normalización dinámica (`dynaudnorm`) para transcripciones más claras.
+- **Manejo robusto de medios**
+  Extrae y normaliza audio automáticamente con FFmpeg, intenta reparar contenedores dañados y aplica normalización dinámica (`dynaudnorm`) para transcripciones más claras.
 
 ---
 
-## 🔁 Flujo del Pipeline
+## 🔁 Flujo del pipeline
 
 ```text
 Input media
@@ -100,17 +103,17 @@ Input media
 Ruta principal de ejecución en `vad_lang_subtitle.py`:
 
 1. Analiza argumentos CLI (`--video-path`, `--whisper-model`, `--force`).
-2. Resuelve rutas de salida desde el nombre base de entrada.
-3. Extrae/normaliza audio mediante FFmpeg.
+2. Resuelve rutas de salida a partir del nombre base de entrada.
+3. Extrae/normaliza audio con FFmpeg.
 4. Carga Silero VAD (`torch.hub`) y el modelo Whisper.
-5. Primera pasada de transcripción sobre fragmentos VAD.
-6. Fusiona/refina segmentos y luego ejecuta una segunda pasada de transcripción sobre tramos fusionados.
+5. Hace una primera transcripción sobre fragmentos VAD.
+6. Fusiona/refina segmentos, y luego hace una segunda transcripción sobre tramos fusionados.
 7. Aplica reducción de longitud de subtítulos y limpieza de marcas de tiempo.
 8. Guarda `.srt` y `.json`.
 
 ---
 
-## 🗂 Estructura del Proyecto
+## 🗂 Estructura del proyecto
 
 ```text
 .
@@ -138,18 +141,18 @@ Ruta principal de ejecución en `vad_lang_subtitle.py`:
 └── .auto-readme-work/                  # README generation workspace artifacts
 ```
 
-> ⚠️ Nota: El README anterior hacía referencia a `requirements.txt`, pero actualmente no existe en la raíz del repositorio.
+> ⚠️ Nota: Una versión anterior del README hacía referencia a `requirements.txt`, pero actualmente falta en la raíz del repositorio.
 
 ---
 
-## ✅ Requisitos Previos
+## ✅ Prerrequisitos
 
-- Python `3.10+` (probado con entornos 3.x modernos)
+- Python `3.10+` (probado con entornos modernos de Python 3.x)
 - `ffmpeg` instalado y disponible en `PATH`
 - CPU/GPU + RAM suficientes para el modelo Whisper seleccionado (para `large`, se recomienda fuertemente GPU)
-- Acceso a Internet en la primera ejecución para obtener los pesos del modelo Whisper y los recursos de Silero VAD (`torch.hub`)
+- Acceso a internet en la primera ejecución para descargar pesos de Whisper y recursos de Silero VAD (`torch.hub`)
 
-Los paquetes de Python usados por el script incluyen:
+Los paquetes Python usados por el script incluyen:
 
 - `torch`
 - `torchaudio`
@@ -157,7 +160,7 @@ Los paquetes de Python usados por el script incluyen:
 - `lingua-language-detector`
 - `tqdm`
 
-Comandos rápidos de verificación:
+Comandos de verificación rápida:
 
 ```bash
 python --version
@@ -168,21 +171,21 @@ ffmpeg -version
 
 ## 🔧 Instalación
 
-1. **Clonar este repositorio**
+1. **Clona este repositorio**
 
 ```bash
 git clone git@github.com:lachlanchen/MultilingualWhisper.git
 cd MultilingualWhisper
 ```
 
-2. **Crear y activar un entorno virtual**
+2. **Crea y activa un entorno virtual**
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-3. **Instalar dependencias**
+3. **Instala las dependencias**
 
 ```bash
 pip install -r requirements.txt
@@ -194,7 +197,28 @@ Si `requirements.txt` sigue ausente en tu copia local, instala manualmente las d
 pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 ```
 
-Y asegúrate de que FFmpeg esté instalado a nivel de sistema.
+Y asegúrate de tener FFmpeg instalado a nivel de sistema.
+
+---
+
+## ⚡ Inicio rápido
+
+Si quieres la ruta más rápida desde clonación hasta subtítulos:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install torch torchaudio openai-whisper lingua-language-detector tqdm
+python vad_lang_subtitle.py -t path/to/video.mp4 --whisper-model small --force
+```
+
+Consejo: usa `small` durante la iteración y cambia a `large` para la calidad final.
+
+Artefactos esperados junto a tu medio de entrada:
+
+- `*.wav` audio extraído y normalizado
+- `*.srt` archivo de subtítulos para reproductores/editores
+- `*.json` metadatos estructurados de subtítulos multilingües
 
 ---
 
@@ -209,42 +233,42 @@ python vad_lang_subtitle.py \
 
 ### Opciones CLI
 
-| Flag | Alias | Obligatorio | Descripción |
+| Flag | Alias | Requerido | Descripción |
 |---|---|---|---|
 | `--video-path` | `-t` | Sí | Ruta del medio de entrada (video/audio compatible con FFmpeg) |
-| `--whisper-model` | — | No | Nombre del modelo Whisper (predeterminado: `large`) |
-| `--force` | — | No | Reejecuta incluso si ya existen `.wav`, `.srt` o `.json` |
+| `--whisper-model` | — | No | Nombre del modelo Whisper (por defecto: `large`) |
+| `--force` | — | No | Reejecuta aunque ya existan `.wav`, `.srt` o `.json` |
 
-### Comportamiento del Procesamiento
+### Comportamiento del procesamiento
 
 - Los nombres de salida se derivan de la ruta base de entrada.
-- Para `input.mp4`, las salidas son `input.wav` (audio normalizado), `input.srt` (subtítulos con marcas de tiempo) e `input.json` (metadatos incluyendo `start`, `end`, `lang`, `text` y, opcionalmente, tiempos por palabra).
-- Si existen `.srt` o `.json`, se omite el procesamiento a menos que se establezca `--force`.
+- Para `input.mp4`, las salidas son `input.wav` (audio normalizado), `input.srt` (subtítulos con marcas de tiempo) e `input.json` (metadatos que incluyen `start`, `end`, `lang`, `text` y opcionalmente tiempos por palabra).
+- Si ya existe `.srt` o `.json`, se omite la ejecución salvo que se establezca `--force`.
 
 ---
 
 ## ⚙️ Configuración
 
-La configuración actual se basa principalmente en CLI y valores predeterminados del código:
+La configuración actual se controla principalmente por CLI y por valores por defecto en el código:
 
-| Área de Configuración | Comportamiento Actual |
+| Área de configuración | Comportamiento actual |
 |---|---|
-| Modelo Whisper | `--whisper-model` (predeterminado `large`) |
+| Modelo Whisper | `--whisper-model` (por defecto `large`) |
 | Frecuencia de muestreo de procesamiento | Fijada en `16000` para procesamiento VAD/transcripción |
 | Extracción FFmpeg | WAV mono, `44100 Hz`, con `dynaudnorm=f=100` |
 | Detector Lingua | Inicializado para `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` en el flujo principal |
-| Valores predeterminados del helper de filtrado en Whisper | Incluye `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
+| Valores por defecto del helper de filtrado en Whisper | Incluye `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
 
-Nota de supuesto: las listas de idiomas en los valores predeterminados del helper y la configuración principal del detector no son totalmente idénticas; este README conserva el comportamiento actual tal como está implementado.
+Nota de supuesto: las listas de idiomas en los valores por defecto del helper y en la configuración principal del detector no son completamente idénticas; este README conserva el comportamiento actual tal como está implementado.
 
 ---
 
-## 📦 Formato de Salida
+## 📦 Formato de salida
 
 La herramienta escribe dos artefactos de subtítulos por cada medio de entrada:
 
-- `*.srt`: Texto de subtítulos estándar con marcas de tiempo `HH:MM:SS,mmm`.
-- `*.json`: Lista estructurada de subtítulos que contiene marcas de tiempo formateadas y etiquetas de idioma.
+- `*.srt`: texto de subtítulos estándar con marcas de tiempo `HH:MM:SS,mmm`.
+- `*.json`: lista estructurada de subtítulos que contiene marcas de tiempo formateadas y etiquetas de idioma.
 
 Forma típica de un segmento JSON:
 
@@ -267,9 +291,9 @@ Forma típica de un segmento JSON:
 
 Notas:
 
-- `start`/`end` se serializan como cadenas estilo SRT en la salida JSON.
+- `start`/`end` se serializan como cadenas con estilo SRT en la salida JSON.
 - `words` puede estar presente según la etapa de procesamiento/refinamiento del segmento.
-- Un valor `lang` de `und` puede aparecer en tramos con idioma incierto.
+- Puede aparecer un valor `lang` igual a `und` en tramos con idioma incierto.
 
 ---
 
@@ -293,7 +317,7 @@ Ejecutar sobre una entrada solo de audio compatible con FFmpeg:
 python vad_lang_subtitle.py -t "data/深圳动物园中心喷泉.m4a" --whisper-model medium
 ```
 
-Ejemplo de procesamiento por lotes en shell (bash):
+Ejemplo de lote en shell (bash):
 
 ```bash
 for f in data/*.{MP4,MOV,m4a}; do
@@ -304,14 +328,14 @@ done
 
 ---
 
-## 🧭 Notas de Desarrollo
+## 🧭 Notas de desarrollo
 
 - El script activo canónico es `vad_lang_subtitle.py`.
 - Los archivos históricos (`*.old`, `*.shorterlength*`, `archived/`) son útiles como referencia, pero parecen no canónicos.
-- Actualmente no hay scaffolding de proyecto empaquetado (`pyproject.toml`, `setup.py`) ni suite de CI/tests confirmada en el repositorio.
-- `data/` contiene artefactos multimedia de ejemplo grandes; ten en cuenta el tamaño del repositorio y el uso de disco local durante pruebas.
+- Actualmente no hay un empaquetado de proyecto (`pyproject.toml`, `setup.py`) ni suite de CI/pruebas confirmada.
+- `data/` contiene artefactos grandes de medios de muestra; ten en cuenta el tamaño del repositorio y el uso de disco local durante experimentos.
 - `clean_subtitles_dict()` existe en el código, pero actualmente no se invoca desde el pipeline principal.
-- `--force` es el mecanismo actual para garantizar la regeneración de salidas durante el ajuste iterativo.
+- `--force` es el mecanismo actual para garantizar la regeneración de salidas durante ajustes iterativos.
 
 Bucle de desarrollo local sugerido:
 
@@ -319,78 +343,84 @@ Bucle de desarrollo local sugerido:
 python vad_lang_subtitle.py -t data/<your_media>.mp4 --whisper-model small --force
 ```
 
-Usa un modelo más pequeño (`tiny`/`base`/`small`) mientras iteras y luego cambia a `large` para la calidad final de salida.
+Usa un modelo más pequeño (`tiny`/`base`/`small`) durante la iteración y luego cambia a `large` para la calidad final.
 
 ---
 
-## 🩺 Solución de Problemas
+## 🩺 Solución de problemas
 
 | Síntoma | Qué hacer |
 |---|---|
 | `ffmpeg: command not found` | Instala FFmpeg y verifica con `ffmpeg -version`. |
 | La primera ejecución es muy lenta o parece bloqueada | Las descargas iniciales de modelos (Whisper + Silero) pueden tardar; las siguientes ejecuciones son más rápidas. |
-| Errores de CUDA / GPU | Prueba con CPU usando un modelo Whisper más pequeño (`small`, `base`, `tiny`) y asegúrate de tener una compilación de PyTorch compatible con tu entorno. |
+| Errores de CUDA / GPU | Prueba fallback a CPU usando un modelo Whisper más pequeño (`small`, `base`, `tiny`) y asegúrate de usar una compilación de PyTorch compatible con tu entorno. |
 | Los archivos de salida no se regeneran | Usa `--force` para sobrescribir archivos derivados existentes. |
 | `pip install -r requirements.txt` falla porque no se encuentra el archivo | Usa el comando de instalación manual de dependencias mostrado en Instalación. |
-| Etiquetado de idioma inexacto en segmentos cortos | Puede ocurrir en tramos extremadamente cortos o con ruido; la lógica actual combina Whisper y Lingua, pero aún hay casos límite. |
-| Salida de subtítulos vacía o casi vacía | Confirma que la entrada tenga voz, inspecciona el `.wav` extraído y vuelve a intentar con `--force` tras validar la extracción con FFmpeg. |
-| Cambios de idioma inesperados entre líneas vecinas | Puede ocurrir en segmentos muy cortos; considera post-fusión en herramientas posteriores por idioma y duración mínima. |
+| Etiquetado de idioma impreciso en segmentos cortos | Puede ocurrir en tramos extremadamente cortos o ruidosos; la lógica actual combina Whisper y Lingua, pero aún hay casos límite. |
+| Salida de subtítulos vacía o casi vacía | Confirma que la entrada tenga voz, inspecciona el `.wav` extraído y reintenta con `--force` tras validar la extracción con FFmpeg. |
+| Cambios inesperados de idioma entre líneas vecinas | Puede ocurrir en segmentos muy cortos; considera posfusionar en herramientas posteriores por idioma y duración mínima. |
 
 ---
 
-## ⚠️ Limitaciones y Supuestos Conocidos
+## ⚠️ Limitaciones y supuestos conocidos
 
-- El manifiesto de dependencias no está confirmado (`requirements.txt`, `pyproject.toml` y `setup.py` están ausentes en la raíz del repositorio al momento de escribir esto).
-- La licencia se declara en el README como MIT, pero actualmente no hay un archivo `LICENSE` independiente.
-- Lingua se inicializa explícitamente con `EN/ZH/JA/AR` en el flujo principal, mientras que los valores predeterminados del helper incluyen más códigos candidatos.
-- Actualmente no hay pruebas/benchmarks automatizados confirmados, por lo que la validación es principalmente manual.
-- Hay scripts históricos en la raíz y en `archived/`; solo `vad_lang_subtitle.py` debe tratarse como activo salvo que se esté experimentando intencionalmente.
+- El manifiesto de dependencias no está versionado (`requirements.txt`, `pyproject.toml` y `setup.py` están ausentes en la raíz del repositorio al momento de escribir esto).
+- La licencia se declara como MIT en el README, pero actualmente no hay un archivo `LICENSE` independiente.
+- Lingua se inicializa explícitamente con `EN/ZH/JA/AR` en el flujo principal, mientras que los valores por defecto del helper incluyen más códigos candidatos.
+- No hay pruebas/benchmarks automatizados confirmados, por lo que la validación es principalmente manual.
+- Hay scripts históricos en la raíz y en `archived/`; solo `vad_lang_subtitle.py` debe tratarse como activo, salvo experimentación intencional.
 
 ---
 
-## 🗺 Hoja de Ruta
+## 🗺 Hoja de ruta
 
 - Añadir y mantener un `requirements.txt` o `pyproject.toml` con versiones fijadas.
 - Añadir pruebas automatizadas para la lógica de segmentación y limpieza de marcas de tiempo.
 - Añadir documentación de benchmarks y evaluación de calidad para casos límite multilingües.
-- Añadir soporte opcional de archivo de configuración en lugar de depender solo de valores predeterminados en código.
+- Añadir soporte opcional de archivo de configuración en lugar de depender solo de valores por defecto en el código.
 - Ampliar el conjunto de README i18n en `i18n/` y mantener sincronizadas las barras de idioma.
-- Aclarar y unificar el comportamiento de selección de idioma entre la configuración del detector y los valores predeterminados del helper.
-- Añadir un archivo `LICENSE` formal para que coincida con la declaración del README.
+- Aclarar y unificar el comportamiento de selección de idioma entre la configuración del detector y los valores por defecto del helper.
+- Añadir un archivo `LICENSE` formal para alinear con la declaración del README.
 
 ---
 
-## 💖 Soporte
+## ❤️ Support
 
-Si este proyecto te ayuda, puedes apoyar el desarrollo mediante:
+Si este proyecto te ahorra tiempo, las contribuciones ayudan a financiar el mantenimiento y futuras mejoras.
+
+| Donate | PayPal | Stripe |
+|---|---|---|
+| [![Donate](https://img.shields.io/badge/Donate-LazyingArt-0EA5E9?style=for-the-badge&logo=ko-fi&logoColor=white)](https://chat.lazying.art/donate) | [![PayPal](https://img.shields.io/badge/PayPal-RongzhouChen-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/RongzhouChen) | [![Stripe](https://img.shields.io/badge/Stripe-Donate-635BFF?style=for-the-badge&logo=stripe&logoColor=white)](https://buy.stripe.com/aFadR8gIaflgfQV6T4fw400) |
+
+Enlaces adicionales de soporte/comunidad:
 
 - GitHub Sponsors: https://github.com/sponsors/lachlanchen
 - Sitio personal: https://lazying.art
 - Chat/comunidad: https://chat.lazying.art
-- Centro de ideas/proyectos: https://onlyideas.art
+- Hub de ideas/proyectos: https://onlyideas.art
 
 ---
 
 ## 🔗 Agradecimientos
 
-- [OpenAI Whisper](https://github.com/openai/whisper) por speech-to-text
+- [OpenAI Whisper](https://github.com/openai/whisper) por el speech-to-text
 - [Snakers4/Silero-VAD](https://github.com/snakers4/silero-models) por la detección robusta de actividad de voz
 - [Lingua](https://github.com/pemistahl/lingua-java) por la identificación de idioma de alta precisión
 
 ---
 
-## 🤝 Contribuir
+## 🤝 Contribuciones
 
-1. Haz un fork y clona
+1. Haz fork y clona
 2. Crea una rama: `git checkout -b feat/your-idea`
 3. Haz commit y push
 4. Abre un PR
 
 Para cambios sustanciales, incluye:
 
-- Una breve descripción del cambio esperado de comportamiento
+- Una breve descripción del cambio de comportamiento esperado
 - Un ejemplo de comando reproducible
-- Fragmentos de subtítulos antes/después cuando corresponda
+- Fragmentos de subtítulos antes/después cuando aplique
 
 ---
 
