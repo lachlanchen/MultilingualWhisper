@@ -9,12 +9,36 @@
 
 A drop-in subtitle generator built on OpenAI Whisper, extended with precise per-segment language detection and refinement for videos containing mixed languages.
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
-![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-black)
-![VAD](https://img.shields.io/badge/VAD-Silero-green)
-![Lang Detect](https://img.shields.io/badge/Language%20Detection-Lingua-2ea44f)
-![FFmpeg](https://img.shields.io/badge/Media-FFmpeg-orange)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
+![VAD](https://img.shields.io/badge/VAD-Silero-2EA44F)
+![Lang Detect](https://img.shields.io/badge/Language%20Detection-Lingua-0E8A16)
+![FFmpeg](https://img.shields.io/badge/Media-FFmpeg-FF6F00?logo=ffmpeg&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+
+---
+
+## Table of Contents
+
+- [Overview](#-overview)
+- [At a Glance](#at-a-glance)
+- [Key Features](#-key-features)
+- [Pipeline Flow](#-pipeline-flow)
+- [Project Structure](#-project-structure)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Usage](#-usage)
+- [Configuration](#-configuration)
+- [Output Format](#-output-format)
+- [Examples](#-examples)
+- [Development Notes](#-development-notes)
+- [Troubleshooting](#-troubleshooting)
+- [Known Limitations and Assumptions](#-known-limitations-and-assumptions)
+- [Roadmap](#-roadmap)
+- [Support](#-support)
+- [Acknowledgments](#-acknowledgments)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
@@ -43,20 +67,46 @@ Primary outputs are subtitle files in `.srt` and `.json`, plus extracted normali
 
 ## 🚀 Key Features
 
-- **Silero VAD -> Whisper pipeline**  
+- **Silero VAD -> Whisper pipeline**
   Voice Activity Detection (VAD) splits audio into speech segments, then Whisper transcribes each chunk.
 
-- **Fine-grained language detection**  
+- **Fine-grained language detection**
   Uses [Lingua](https://github.com/pemistahl/lingua-java) alongside Whisper’s own detector to tag every segment (even individual words) with ISO language codes (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...).
 
-- **Intelligent segment refinement**  
+- **Intelligent segment refinement**
   Timestamp cleanup ensures no gaps or overlaps. Punctuation splits break long transcriptions at commas, periods, question marks, etc. VAD merges re-align words back to VAD blocks for smoother subtitles. Length-aware segmentation applies language-specific limits.
 
-- **Multilingual subtitles**  
+- **Multilingual subtitles**
   Outputs both `.srt` and `.json`, preserving language tags per segment so you can style or filter by language in downstream players or editors.
 
-- **Robust media handling**  
+- **Robust media handling**
   Auto-extracts and normalizes audio via FFmpeg, attempts repair for broken containers, and applies dynamic normalization (`dynaudnorm`) for clearer transcripts.
+
+---
+
+## 🔁 Pipeline Flow
+
+```text
+Input media
+  -> FFmpeg extract + normalize (.wav)
+  -> Silero VAD speech timestamps
+  -> Whisper transcription + language prediction
+  -> Lingua segment language refinement
+  -> Segment merge/split/timestamp cleanup
+  -> Length-aware subtitle refinement
+  -> Output .srt + .json
+```
+
+Main runtime path in `vad_lang_subtitle.py`:
+
+1. Parse CLI args (`--video-path`, `--whisper-model`, `--force`).
+2. Resolve output paths from input basename.
+3. Extract/normalize audio via FFmpeg.
+4. Load Silero VAD (`torch.hub`) and Whisper model.
+5. First-pass transcription over VAD chunks.
+6. Merge/refine segments, then second-pass transcription on merged spans.
+7. Apply subtitle-length reduction and timestamp cleaning.
+8. Save `.srt` and `.json`.
 
 ---
 
@@ -65,20 +115,27 @@ Primary outputs are subtitle files in `.srt` and `.json`, plus extracted normali
 ```text
 .
 ├── README.md
-├── vad_lang_subtitle.py               # Main pipeline: VAD -> Whisper -> Lingua -> refine -> save
-├── vad_lang_subtitle.py.old           # Legacy prototype
-├── vad_lang_subtitle.py.20250706      # Historical snapshot
-├── vad_lang_subtitle.py.shorterlength # Alternative historical variant
-├── vad_lang_subtitle.py.shorterlength2# Alternative historical variant
-├── vad_lang_subtitle.srt              # Example output
-├── vad_lang_subtitle.json             # Example JSON
+├── vad_lang_subtitle.py                # Main pipeline: VAD -> Whisper -> Lingua -> refine -> save
+├── vad_lang_subtitle.py.old            # Legacy prototype
+├── vad_lang_subtitle.py.20250706       # Historical snapshot
+├── vad_lang_subtitle.py.shorterlength  # Alternative historical variant
+├── vad_lang_subtitle.py.shorterlength2 # Alternative historical variant
+├── vad_lang_subtitle.srt               # Example output
+├── vad_lang_subtitle.json              # Example JSON
 ├── .github/
-│   └── FUNDING.yml                    # Sponsor links
-├── archived/                          # Old experiments/prototypes
-├── data/                              # Optional sample media + generated outputs
-├── figs/                              # Branding assets (banner/logo)
-├── i18n/                              # Translation/readme workspace (currently present, empty)
-└── .auto-readme-work/                 # README generation workspace artifacts
+│   └── FUNDING.yml                     # Sponsor links
+├── archived/
+│   ├── vad.py
+│   ├── vad_lang.py
+│   ├── vad_lang_subtitle.py
+│   ├── decode_audio.py
+│   ├── decode_audio_v2.py
+│   ├── text_language_detect.py
+│   └── trans_with_lang.py
+├── data/                               # Optional sample media + generated outputs
+├── figs/                               # Branding assets (banner/logo)
+├── i18n/                               # Existing multilingual README files
+└── .auto-readme-work/                  # README generation workspace artifacts
 ```
 
 > ⚠️ Note: Previous README referenced `requirements.txt`, but it is currently missing in repository root.
@@ -99,6 +156,13 @@ Python packages used by the script include:
 - `whisper` (OpenAI Whisper Python package)
 - `lingua-language-detector`
 - `tqdm`
+
+Quick verification commands:
+
+```bash
+python --version
+ffmpeg -version
+```
 
 ---
 
@@ -163,13 +227,49 @@ python vad_lang_subtitle.py \
 
 Current configuration is mainly CLI-driven and code-default-driven:
 
-- Whisper model: `--whisper-model` (default `large`)
-- Sampling rate: hard-coded to `16000` for processing
-- FFmpeg extraction: mono WAV, `44100 Hz`, with `dynaudnorm=f=100`
-- Lingua detector: initialized for `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` in main flow
-- Allowed language codes for Whisper-side filtering include `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` in helper defaults
+| Config Area | Current Behavior |
+|---|---|
+| Whisper model | `--whisper-model` (default `large`) |
+| Processing sample rate | Hard-coded to `16000` for VAD/transcription processing |
+| FFmpeg extraction | Mono WAV, `44100 Hz`, with `dynaudnorm=f=100` |
+| Lingua detector | Initialized for `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` in main flow |
+| Whisper-side filtering helper defaults | Includes `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
 
 Assumption note: language lists in helper defaults and main detector setup are not fully identical; this README preserves current behavior as implemented.
+
+---
+
+## 📦 Output Format
+
+The tool writes two subtitle artifacts per input media:
+
+- `*.srt`: Standard subtitle text with `HH:MM:SS,mmm` timestamps.
+- `*.json`: Structured subtitle list containing formatted timestamps and language tags.
+
+Typical JSON segment shape:
+
+```json
+{
+  "start": "00:00:01,234",
+  "end": "00:00:03,456",
+  "lang": "en",
+  "text": "Hello world",
+  "words": [
+    {
+      "word": " Hello",
+      "start": 1234,
+      "end": 1678,
+      "probability": 0.98
+    }
+  ]
+}
+```
+
+Notes:
+
+- `start`/`end` are serialized as SRT-style strings in JSON output.
+- `words` may be present depending on segment processing/refinement stage.
+- A `lang` value of `und` can appear for uncertain language spans.
 
 ---
 
@@ -193,6 +293,15 @@ Run on an audio-only input supported by FFmpeg:
 python vad_lang_subtitle.py -t "data/深圳动物园中心喷泉.m4a" --whisper-model medium
 ```
 
+Batch shell example (bash):
+
+```bash
+for f in data/*.{MP4,MOV,m4a}; do
+  [ -e "$f" ] || continue
+  python vad_lang_subtitle.py -t "$f" --whisper-model medium
+done
+```
+
 ---
 
 ## 🧭 Development Notes
@@ -202,6 +311,15 @@ python vad_lang_subtitle.py -t "data/深圳动物园中心喷泉.m4a" --whisper-
 - There is currently no packaged project scaffolding (`pyproject.toml`, `setup.py`) and no CI/test suite committed.
 - `data/` contains large sample media artifacts; be mindful of repository size and local disk usage during experiments.
 - `clean_subtitles_dict()` exists in code but is currently not invoked by the main pipeline.
+- `--force` is the current mechanism to guarantee regeneration of outputs for iterative tuning.
+
+Suggested local dev loop:
+
+```bash
+python vad_lang_subtitle.py -t data/<your_media>.mp4 --whisper-model small --force
+```
+
+Use a smaller model (`tiny`/`base`/`small`) while iterating, then switch to `large` for final output quality.
 
 ---
 
@@ -215,6 +333,18 @@ python vad_lang_subtitle.py -t "data/深圳动物园中心喷泉.m4a" --whisper-
 | Output files are not regenerated | Use `--force` to overwrite existing derived files. |
 | `pip install -r requirements.txt` fails because file not found | Use manual dependency install command shown in Installation. |
 | Inaccurate language tagging on short segments | This can happen on extremely short/noisy spans; current logic combines Whisper and Lingua but still has edge cases. |
+| Empty or near-empty subtitle output | Confirm input has speech, inspect extracted `.wav`, and retry with `--force` after validating FFmpeg extraction. |
+| Unexpected language flips between neighboring lines | This can occur on very short segments; consider post-merging in downstream tooling by language and minimum duration. |
+
+---
+
+## ⚠️ Known Limitations and Assumptions
+
+- Dependency manifest is not committed (`requirements.txt`, `pyproject.toml`, and `setup.py` are absent in repository root at time of writing).
+- License is declared in README as MIT, but a standalone `LICENSE` file is not currently present.
+- Lingua is explicitly initialized with `EN/ZH/JA/AR` in main flow, while helper defaults include more candidate codes.
+- No automated tests/benchmarks are currently committed, so validation is primarily manual.
+- Historical scripts are present in root and `archived/`; only `vad_lang_subtitle.py` should be treated as active unless intentionally experimenting.
 
 ---
 
@@ -225,6 +355,8 @@ python vad_lang_subtitle.py -t "data/深圳动物园中心喷泉.m4a" --whisper-
 - Add benchmark and quality evaluation docs for multilingual edge cases.
 - Add optional config file support instead of code-default-only behavior.
 - Expand i18n README set in `i18n/` and keep language bars synchronized.
+- Clarify and unify language selection behavior between detector configuration and helper defaults.
+- Add a formal `LICENSE` file to match README declaration.
 
 ---
 
@@ -253,6 +385,12 @@ If this project helps you, you can support development via:
 2. Create a branch: `git checkout -b feat/your-idea`
 3. Commit and push
 4. Open a PR
+
+For substantial changes, include:
+
+- A short description of expected behavior change
+- A reproducible command example
+- Before/after subtitle snippets when relevant
 
 ---
 
