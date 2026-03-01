@@ -1,14 +1,13 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
-
 [![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
 
-Ein sofort einsatzbereiter Untertitel-Generator auf Basis von OpenAI Whisper, erweitert um präzise Sprach­erkennung und -verfeinerung pro Segment für Videos mit mehreren Sprachen.
+Ein sofort einsetzbarer Untertitel-Generator auf Basis von OpenAI Whisper, erweitert um präzise Sprachenerkennung und -verfeinerung pro Segment für Videos mit gemischten Sprachen.
 
-> Erzeuge sauberere mehrsprachige Untertitel aus echtem, gemischtem Sprachmaterial mit sprachbewusster Segmentierung.
+> Erzeuge sauberere mehrsprachige Untertitel aus realen Medien mit Sprachmischung durch sprachbewusste Segmentierung.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
@@ -20,12 +19,21 @@ Ein sofort einsatzbereiter Untertitel-Generator auf Basis von OpenAI Whisper, er
 ![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
 ![Workflow](https://img.shields.io/badge/Flow-Silero%20%3E%20Whisper%20%3E%20Lingua-4D6D9A)
 ![Refinement](https://img.shields.io/badge/Refinement-Text%20%2B%20Timestamps-0EA5E9)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-6B7280)
+![Maintained](https://img.shields.io/badge/Maintained-Yes-16A34A)
+
+> 🌍 **Mehrsprachige Doku verfügbar**: Englisch + 10 übersetzte README-Varianten in [`i18n/`](i18n/), verlinkt in der Sprachleiste oben.
+
+### Dokumentationssprachen
+
+| Sprache | Datei |
+| --- | --- |
 
 | Fokus | Wert |
 | --- | --- |
-| Input | FFmpeg-kompatibles Audio/Video |
-| Pipeline | VAD-Segmentierung → Whisper-Transkription → Lingua-Feinschliff |
-| Output | Normalisierte `*.wav`, `*.srt` und `*.json` |
+| Eingabe | FFmpeg-kompatibles Audio/Video |
+| Pipeline | VAD-Segmentierung -> Whisper-Transkription -> Lingua-Verfeinerung |
+| Ausgabe | Normalisierte `*.wav`, `*.srt` und `*.json` |
 | Beste Verwendung | Mehrsprachige Untertitel mit Sprach-Tags pro Segment |
 
 ---
@@ -34,12 +42,13 @@ Ein sofort einsatzbereiter Untertitel-Generator auf Basis von OpenAI Whisper, er
 
 - [Überblick](#-überblick)
 - [Auf einen Blick](#auf-einen-blick)
-- [Hauptmerkmale](#-hauptmerkmale)
+- [Wichtige Funktionen](#-wichtige-funktionen)
 - [Pipeline-Ablauf](#-pipeline-ablauf)
 - [Projektstruktur](#-projektstruktur)
 - [Voraussetzungen](#-voraussetzungen)
 - [Installation](#-installation)
 - [Schnellstart](#-schnellstart)
+- [Leitfaden zur Modellauswahl](#-leitfaden-zur-modellauswahl)
 - [Verwendung](#-verwendung)
 - [Konfiguration](#-konfiguration)
 - [Ausgabeformat](#-ausgabeformat)
@@ -48,10 +57,10 @@ Ein sofort einsatzbereiter Untertitel-Generator auf Basis von OpenAI Whisper, er
 - [Fehlerbehebung](#-fehlerbehebung)
 - [Bekannte Einschränkungen und Annahmen](#-bekannte-einschränkungen-und-annahmen)
 - [Roadmap](#-roadmap)
-- [Support](#-support)
-- [Kontakt](#-kontakt)
 - [Danksagungen](#-danksagungen)
 - [Mitwirken](#-mitwirken)
+- [Support](#-support)
+- [Kontakt](#-kontakt)
 - [Lizenz](#-lizenz)
 
 ---
@@ -61,40 +70,40 @@ Ein sofort einsatzbereiter Untertitel-Generator auf Basis von OpenAI Whisper, er
 `MultilingualWhisper` ist eine Python-CLI-Pipeline rund um [`vad_lang_subtitle.py`](vad_lang_subtitle.py). Sie kombiniert:
 
 - Silero VAD für Sprachsegmentierung
-- OpenAI Whisper für Transkription und erste Spracherkennung
+- OpenAI Whisper für Transkription und erste Sprachvorhersage
 - Lingua für textbasierte Sprachverfeinerung
 - FFmpeg für Extraktion, Normalisierung und Medienverarbeitung
 
-Hauptergebnisse sind Untertiteldateien im Format `.srt` und `.json` sowie die extrahierte und normalisierte `.wav`-Audiodatei.
+Die primären Ausgaben sind Untertiteldateien in `.srt` und `.json` sowie extrahiertes, normalisiertes `.wav`-Audio.
 
 ### Auf einen Blick
 
 | Punkt | Details |
 |---|---|
-| Haupteinstieg | `vad_lang_subtitle.py` |
-| Eingabe | FFmpeg-kompatibles Video/Audio |
+| Haupteinstiegspunkt | `vad_lang_subtitle.py` |
+| Eingabe | Von FFmpeg unterstütztes Video/Audio |
 | Ausgabe | `*.wav`, `*.srt`, `*.json` |
-| Kernablauf | VAD -> Whisper -> Lingua -> Feinschliff |
-| Typischer Anwendungsfall | Untertitel für gemischte Sprachen |
+| Kernablauf | VAD -> Whisper -> Lingua -> Verfeinerung |
+| Typischer Anwendungsfall | Mehrsprachige Untertitel-Erzeugung |
 
 ---
 
-## 🚀 Hauptmerkmale
+## 🚀 Wichtige Funktionen
 
-- **Silero VAD -> Whisper-Pipeline**
-  Die Sprachaktivitätserkennung (VAD) teilt Audio in Sprachsegmente, und Whisper transkribiert anschließend jeden Teil.
+- **Silero VAD -> Whisper-Pipeline**  
+  Voice Activity Detection (VAD) teilt Audio in Sprachsegmente, danach transkribiert Whisper jedes Segment.
 
-- **Sprachdetektion in hoher Granularität**
-  [Lingua](https://github.com/pemistahl/lingua-java) wird zusammen mit Whispers eigenem Detektor genutzt, um jedes Segment (sogar einzelne Wörter) mit ISO-Sprachcodes (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...) zu taggen.
+- **Feingranulare Spracherkennung**  
+  Nutzt [Lingua](https://github.com/pemistahl/lingua-java) zusammen mit Whispers eigener Erkennung, um jedes Segment (sogar einzelne Wörter) mit ISO-Sprachcodes zu markieren (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...).
 
-- **Intelligente Segmentverfeinerung**
-  Das Bereinigen der Zeitstempel sorgt dafür, dass keine Lücken oder Überlappungen entstehen. Interpunktionsteilung teilt lange Transkripte bei Kommas, Punkten, Fragezeichen usw. und ähnlichem auf. VAD ordnet Wörter anschließend wieder den VAD-Blöcken zu, damit die Untertitel flüssiger wirken. Längenabhängige Segmentierung nutzt sprachspezifische Grenzwerte.
+- **Intelligente Segmentverfeinerung**  
+  Zeitstempel-Bereinigung verhindert Lücken und Überlappungen. Interpunktions-Splitting teilt lange Transkriptionen an Kommas, Punkten, Fragezeichen usw. VAD-Merges richten Wörter wieder an VAD-Blöcken aus, damit Untertitel flüssiger werden. Längenbewusste Segmentierung nutzt sprachspezifische Grenzwerte.
 
-- **Mehrsprachige Untertitel**
-  Es werden `.srt` und `.json` ausgegeben, wobei Sprach-Tags pro Segment erhalten bleiben, damit du in nachgelagerten Playern oder Editoren später nach Sprache filtern oder stylen kannst.
+- **Mehrsprachige Untertitel**  
+  Gibt sowohl `.srt` als auch `.json` aus und erhält Sprach-Tags pro Segment, sodass du in nachgelagerten Playern oder Editoren nach Sprache filtern oder gezielt stylen kannst.
 
-- **Robuste Medienbehandlung**
-  Audio wird automatisch via FFmpeg extrahiert und normalisiert, kaputte Container werden nach Möglichkeit repariert, und dynamische Normalisierung (`dynaudnorm`) sorgt für klarere Transkripte.
+- **Robuste Medienverarbeitung**  
+  Extrahiert und normalisiert Audio automatisch via FFmpeg, versucht fehlerhafte Container zu reparieren und nutzt dynamische Normalisierung (`dynaudnorm`) für klarere Transkripte.
 
 ---
 
@@ -102,24 +111,24 @@ Hauptergebnisse sind Untertiteldateien im Format `.srt` und `.json` sowie die ex
 
 ```text
 Eingabemedium
-  -> FFmpeg-Extraktion + Normalisierung (.wav)
-  -> Silero VAD-Sprache-Zeitstempel
-  -> Whisper-Transkription + Spracherkennung
-  -> Lingua-Segment-Sprachverfeinerung
-  -> Segment-Zusammenführung/-Aufteilung + Zeitstempelbereinigung
-  -> Länge-sensibler Subtitle-Feinschliff
-  -> Ausgabe .srt + .json
+  -> FFmpeg extract + normalize (.wav)
+  -> Silero VAD speech timestamps
+  -> Whisper transcription + language prediction
+  -> Lingua segment language refinement
+  -> Segment merge/split/timestamp cleanup
+  -> Length-aware subtitle refinement
+  -> Output .srt + .json
 ```
 
-Hauptausführungsfluss in `vad_lang_subtitle.py`:
+Hauptlaufzeitpfad in `vad_lang_subtitle.py`:
 
 1. CLI-Argumente parsen (`--video-path`, `--whisper-model`, `--force`).
-2. Ausgabepfade aus Basisname der Eingabe auflösen.
+2. Ausgabepfade aus dem Basenamen der Eingabe auflösen.
 3. Audio via FFmpeg extrahieren/normalisieren.
 4. Silero VAD (`torch.hub`) und Whisper-Modell laden.
-5. Erste Transkription über VAD-Chunks.
-6. Segmente zusammenführen/verfeinern, dann zweite Transkription über zusammengeführte Spannen.
-7. Untertitel-Längenreduktion und Zeitstempelbereinigung anwenden.
+5. Erste Transkriptionsrunde über VAD-Abschnitte.
+6. Segmente zusammenführen/verfeinern, danach zweite Transkriptionsrunde auf zusammengeführten Spannen.
+7. Untertitel-Längenreduktion und Zeitstempel-Bereinigung anwenden.
 8. `.srt` und `.json` speichern.
 
 ---
@@ -152,26 +161,26 @@ Hauptausführungsfluss in `vad_lang_subtitle.py`:
 └── .auto-readme-work/                  # README generation workspace artifacts
 ```
 
-> ⚠️ Hinweis: Das frühere README verwies auf `requirements.txt`, diese Datei fehlt jedoch aktuell im Repository-Root.
+> ⚠️ Hinweis: In früheren README-Versionen wurde `requirements.txt` erwähnt, die Datei fehlt derzeit jedoch im Repository-Root.
 
 ---
 
 ## ✅ Voraussetzungen
 
 - Python `3.10+` (getestet mit aktuellen 3.x-Umgebungen)
-- `ffmpeg` installiert und im `PATH`
-- Ausreichend CPU/GPU + RAM für das gewählte Whisper-Modell (`large` empfiehlt sich stark mit GPU)
-- Beim ersten Start Internetzugang, um Whisper-Modelldateien und Silero VAD-Assets (`torch.hub`) zu laden
+- Installiertes `ffmpeg`, verfügbar im `PATH`
+- Ausreichend CPU/GPU + RAM für das gewählte Whisper-Modell (für `large` wird GPU dringend empfohlen)
+- Internetzugang beim ersten Lauf zum Laden von Whisper-Gewichten und Silero-VAD-Assets (`torch.hub`)
 
-Von dem Skript verwendete Python-Pakete:
+Vom Skript genutzte Python-Pakete:
 
 - `torch`
 - `torchaudio`
-- `whisper` (OpenAI Whisper Python-Paket)
+- `whisper` (OpenAI Whisper Python package)
 - `lingua-language-detector`
 - `tqdm`
 
-Schnell-Check-Befehle:
+Kurze Prüfkommandos:
 
 ```bash
 python --version
@@ -202,19 +211,19 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Wenn `requirements.txt` in deinem Checkout weiterhin fehlt, installiere die wichtigsten Laufzeitabhängigkeiten manuell:
+Falls `requirements.txt` in deinem Checkout weiterhin fehlt, installiere die Kernabhängigkeiten manuell:
 
 ```bash
 pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 ```
 
-Und stelle sicher, dass FFmpeg systemweit installiert ist.
+Und stelle sicher, dass FFmpeg auf Systemebene installiert ist.
 
 ---
 
 ## ⚡ Schnellstart
 
-Wenn du den schnellsten Weg von `clone` zu Untertiteln willst:
+Wenn du den schnellsten Weg von Clone bis zu Untertiteln willst:
 
 ```bash
 python3 -m venv venv
@@ -223,13 +232,32 @@ pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 python vad_lang_subtitle.py -t path/to/video.mp4 --whisper-model small --force
 ```
 
-Tipp: Nutze `small` in der Iteration, anschließend `large` für Endqualität.
+Tipp: Nutze beim Iterieren `small`, wechsle für Endqualität anschließend zu `large`.
 
-Erwartete Artefakte neben der Eingabedatei:
+Erwartete Artefakte neben deinem Eingabemedium:
 
-- `*.wav` normalisiertes extrahiertes Audio
+- `*.wav` normalisiertes, extrahiertes Audio
 - `*.srt` Untertiteldatei für Player/Editoren
 - `*.json` strukturierte mehrsprachige Untertitel-Metadaten
+
+---
+
+## 🎚 Leitfaden zur Modellauswahl
+
+Wähle ein Whisper-Modell passend zu deinem Zielkonflikt aus Geschwindigkeit und Qualität:
+
+| Modell | Geschwindigkeit | Qualität | Empfohlene Nutzung |
+|---|---|---|---|
+| `tiny` / `base` | Am schnellsten | Niedrigste | Schnelle Smoke-Tests und Pipeline-Validierung |
+| `small` | Schnell | Gut | Tägliche Iteration und lokale Entwicklung |
+| `medium` | Mittel | Besser | Ausgewogene Produktions-Workflows |
+| `large` (default) | Am langsamsten | Beste | Finale Untertitel-Exporte mit höchster Qualität |
+
+Praktisches Muster:
+
+1. Mit `small --force` iterieren
+2. Timing und Sprach-Tags validieren
+3. Für das Liefer-Output mit `large --force` erneut ausführen
 
 ---
 
@@ -244,42 +272,48 @@ python vad_lang_subtitle.py \
 
 ### CLI-Optionen
 
-| Flag | Alias | Pflicht | Beschreibung |
+| Flag | Alias | Erforderlich | Beschreibung |
 |---|---|---|---|
-| `--video-path` | `-t` | Ja | Eingabemedium (Video/Audio, das FFmpeg unterstützt) |
+| `--video-path` | `-t` | Ja | Pfad zum Eingabemedium (Video/Audio von FFmpeg unterstützt) |
 | `--whisper-model` | — | Nein | Whisper-Modellname (Standard: `large`) |
-| `--force` | — | Nein | Neu ausführen, auch wenn `.wav`, `.srt` oder `.json` bereits existieren |
+| `--force` | — | Nein | Erneut ausführen, auch wenn `.wav`, `.srt` oder `.json` bereits existieren |
 
-### Verarbeitung
+### Verarbeitungsverhalten
 
 - Ausgabenamen werden aus dem Basispfad der Eingabe abgeleitet.
-- Für `input.mp4` sind Ausgaben `input.wav` (normalisiertes Audio), `input.srt` (zeitgestempelte Untertitel) und `input.json` (Metadaten mit `start`, `end`, `lang`, `text`, optionalen Wortzeitstempeln).
-- Vorhandene `.srt` oder `.json` führen zum Überspringen, außer `--force` ist gesetzt.
+- Für `input.mp4` sind die Ausgaben `input.wav` (normalisiertes Audio), `input.srt` (zeitgestempelte Untertitel) und `input.json` (Metadaten mit `start`, `end`, `lang`, `text`, optional Word-Timings).
+- Existierende `.srt` oder `.json` führen zum Überspringen, außer `--force` ist gesetzt.
 
 ---
 
 ## ⚙️ Konfiguration
 
-Aktuelle Konfiguration ist im Wesentlichen CLI-getrieben und in Code-Defaults festgelegt:
+Die aktuelle Konfiguration ist hauptsächlich CLI-getrieben und durch Code-Defaults bestimmt:
 
-| Konfigurationsbereich | Verhalten |
+| Konfigurationsbereich | Aktuelles Verhalten |
 |---|---|
-| Whisper-Modell | `--whisper-model` (Standard `large`) |
-| Verarbeitungssample-Rate | Fest auf `16000` für VAD/Transkription |
-| FFmpeg-Extraktion | Mono-WAV, `44100 Hz`, mit `dynaudnorm=f=100` |
-| Lingua-Detektor | Initialisiert für `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` im Hauptfluss |
-| Whisper-side filtering defaults | Enthält `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
+| Whisper-Modell | `--whisper-model` (default `large`) |
+| Verarbeitungssamplerate | Fest auf `16000` für VAD/Transkriptionsverarbeitung |
+| FFmpeg-Extraktion | Mono WAV, `44100 Hz`, mit `dynaudnorm=f=100` |
+| Lingua-Detektor | Im Hauptablauf initialisiert für `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` |
+| Whisper-side filtering helper defaults | Enthält `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
 
-Hinweis: Sprachlisten in den Hilfs-Defaults und in der Hauptdetektoreinstellung sind nicht vollständig identisch; dieses README gibt das aktuell implementierte Verhalten unverändert wieder.
+Hinweis zur Annahme: Die Sprachlisten in Helper-Defaults und Hauptdetektor-Setup sind nicht vollständig identisch; dieses README spiegelt das aktuell implementierte Verhalten wider.
+
+Zusätzliche Implementierungsdetails aus dem aktuellen Skript:
+
+- `torch.set_num_threads(1)` wird zur Laufzeit gesetzt.
+- Das VAD-Modell wird aus `snakers4/silero-vad` via `torch.hub.load(...)` geladen.
+- Bei der Segmentbereinigung werden Einträge mit Sprache `und` oder leerem Text entfernt.
 
 ---
 
 ## 📦 Ausgabeformat
 
-Das Tool schreibt zwei Untertitel-Artefakte pro Eingabemedium:
+Das Tool schreibt pro Eingabemedium zwei Untertitel-Artefakte:
 
 - `*.srt`: Standard-Untertiteltext mit Zeitstempeln im Format `HH:MM:SS,mmm`.
-- `*.json`: Strukturierte Untertitel-Liste mit formatierten Zeitstempeln und Sprach-Tags.
+- `*.json`: Strukturierte Untertitelliste mit formatierten Zeitstempeln und Sprach-Tags.
 
 Typische JSON-Segmentstruktur:
 
@@ -302,33 +336,33 @@ Typische JSON-Segmentstruktur:
 
 Hinweise:
 
-- `start`/`end` werden in JSON als SRT-konforme Strings serialisiert.
-- `words` kann je nach Verarbeitungs-/Verfeinerungsstufe vorhanden sein.
-- Ein `lang`-Wert von `und` kann bei unsicheren Sprachbereichen auftreten.
+- `start`/`end` werden in der JSON-Ausgabe als SRT-ähnliche Strings serialisiert.
+- `words` kann je nach Segmentverarbeitungs-/Verfeinerungsphase vorhanden sein.
+- Ein `lang`-Wert `und` kann bei unsicheren Sprachabschnitten auftreten.
 
 ---
 
 ## 🧪 Beispiele
 
-Ausführung auf einem MP4:
+Ausführung mit einer MP4:
 
 ```bash
 python vad_lang_subtitle.py -t data/9b7bfbfbe8ab1b9925cfdc34f2f9f7_2024_03_15_22_08_26_COMPLETED.MP4 --whisper-model large
 ```
 
-Ausführung auf einer MOV-Datei mit Überschreiben:
+Ausführung mit einer MOV und erzwungenem Überschreiben:
 
 ```bash
 python vad_lang_subtitle.py -t data/IMG_6276.MOV --whisper-model large --force
 ```
 
-Ausführung auf einer audio-only-Eingabe, die FFmpeg unterstützt:
+Ausführung mit einer reinen Audio-Eingabe, die FFmpeg unterstützt:
 
 ```bash
 python vad_lang_subtitle.py -t "data/深圳动物园中心喷泉.m4a" --whisper-model medium
 ```
 
-Batch-Beispiel (bash):
+Batch-Shell-Beispiel (bash):
 
 ```bash
 for f in data/*.{MP4,MOV,m4a}; do
@@ -341,12 +375,12 @@ done
 
 ## 🧭 Entwicklungshinweise
 
-- Die aktive kanonische Hauptdatei ist `vad_lang_subtitle.py`.
-- Historische Dateien (`*.old`, `*.shorterlength*`, `archived/`) sind als Referenz nützlich, aber vermutlich nicht kanonisch.
-- Es gibt aktuell kein Paket-Scaffolding (`pyproject.toml`, `setup.py`) und keine CI-/Test-Suite im Repo.
-- `data/` enthält große Mediabeispiele/Ergebnisse; beachte Repo-Größe und lokalen Speicherverbrauch bei Experimenten.
-- `clean_subtitles_dict()` existiert im Code, wird aber momentan nicht von der Hauptpipeline aufgerufen.
-- `--force` ist der derzeitige Mechanismus, um Ausgaben bei iterativer Anpassung zuverlässig neu zu erzeugen.
+- Das kanonische aktive Skript ist `vad_lang_subtitle.py`.
+- Historische Dateien (`*.old`, `*.shorterlength*`, `archived/`) sind als Referenz nützlich, wirken aber nicht kanonisch.
+- Es gibt derzeit kein paketiertes Projekt-Scaffolding (`pyproject.toml`, `setup.py`) und keine commitete CI-/Test-Suite.
+- `data/` enthält große Beispielmedien; achte bei Experimenten auf Repository-Größe und lokalen Speicherverbrauch.
+- `clean_subtitles_dict()` existiert im Code, wird derzeit aber nicht in der Hauptpipeline verwendet.
+- `--force` ist aktuell der Mechanismus, um bei iterativem Tuning die Ausgabe sicher neu zu erzeugen.
 
 Empfohlener lokaler Entwicklungs-Loop:
 
@@ -354,72 +388,86 @@ Empfohlener lokaler Entwicklungs-Loop:
 python vad_lang_subtitle.py -t data/<your_media>.mp4 --whisper-model small --force
 ```
 
-Verwende während der Iteration ein kleineres Modell (`tiny`/`base`/`small`) und wechsle danach auf `large` für finale Qualität.
+Nutze beim Iterieren ein kleineres Modell (`tiny`/`base`/`small`) und wechsle für finale Ausgabequalität auf `large`.
 
 ---
 
 ## 🩺 Fehlerbehebung
 
-| Symptom | Vorgehen |
+| Symptom | Was tun |
 |---|---|
 | `ffmpeg: command not found` | FFmpeg installieren und mit `ffmpeg -version` prüfen. |
-| Erster Start ist sehr langsam oder wirkt eingefroren | Erstmalige Modell-Downloads (Whisper + Silero) dauern; erneute Läufe sind schneller. |
-| CUDA-/GPU-Fehler | Versuche CPU-Fallback mit einem kleineren Whisper-Modell (`small`, `base`, `tiny`) und prüfe einen passenden PyTorch-Build für die Umgebung. |
-| Ausgabedateien werden nicht neu erstellt | Mit `--force` bestehende abgeleitete Dateien überschreiben. |
-| `pip install -r requirements.txt` schlägt wegen fehlender Datei fehl | Nutze den im Installationsabschnitt genannten manuellen Befehl. |
-| Ungenaue Sprachzuordnung bei kurzen Segmenten | Das kann bei sehr kurzen oder verrauschten Abschnitten passieren; die aktuelle Logik kombiniert Whisper und Lingua, hat aber weiterhin Randfälle. |
-| Leere oder fast leere Untertitel-Ausgabe | Prüfe, ob die Eingabe gesprochene Segmente enthält, kontrolliere extrahiertes `.wav` und versuche anschließend erneut mit `--force` nach überprüfter FFmpeg-Extraktion. |
-| Unerwartete Sprachwechsel zwischen benachbarten Zeilen | Das kann bei sehr kurzen Segmenten auftreten; konsolidiere nachträglich in nachgelagerten Tools nach Sprache und Mindestdauer. |
+| Erster Lauf ist sehr langsam oder wirkt festgefahren | Die initialen Modell-Downloads (Whisper + Silero) können dauern; erneute Läufe sind schneller. |
+| CUDA-/GPU-Fehler | CPU-Fallback mit kleinerem Whisper-Modell (`small`, `base`, `tiny`) testen und passenden PyTorch-Build für deine Umgebung sicherstellen. |
+| Ausgabedateien werden nicht neu erzeugt | Mit `--force` bestehende abgeleitete Dateien überschreiben. |
+| `pip install -r requirements.txt` schlägt fehl, weil die Datei nicht gefunden wird | Manuellen Abhängigkeits-Installationsbefehl aus dem Installationsabschnitt verwenden. |
+| Ungenaue Sprach-Tags bei kurzen Segmenten | Das kann bei extrem kurzen/verrauschten Abschnitten passieren; die aktuelle Logik kombiniert Whisper und Lingua, hat aber weiterhin Randfälle. |
+| Leere oder nahezu leere Untertitel-Ausgabe | Prüfen, ob Eingabe Sprache enthält, extrahierte `.wav` prüfen und nach validierter FFmpeg-Extraktion mit `--force` erneut testen. |
+| Unerwartete Sprachwechsel zwischen benachbarten Zeilen | Das kann bei sehr kurzen Segmenten auftreten; ggf. in Downstream-Tools nach Sprache und Mindestdauer nachträglich zusammenführen. |
+| FFmpeg-Extraktion schlägt bei beschädigten Medien fehl | Das Skript versucht einen erneuten Lauf nach Container-Reparatur (`-c copy -movflags +faststart`), stark beschädigte Dateien können trotzdem fehlschlagen. |
+
+Schnelldiagnose:
+
+```bash
+python --version
+ffmpeg -version
+python -c "import torch, whisper, torchaudio, tqdm; print('python deps ok')"
+```
 
 ---
 
 ## ⚠️ Bekannte Einschränkungen und Annahmen
 
-- Die Dependency-Manifest-Datei ist nicht committed (`requirements.txt`, `pyproject.toml` und `setup.py` fehlen derzeit im Repository-Root).
-- In der README ist MIT als Lizenz angegeben, aber aktuell liegt keine eigenständige `LICENSE`-Datei vor.
-- Lingua wird im Hauptfluss explizit mit `EN/ZH/JA/AR` initialisiert, während die Helper-Defaults mehr Kandidaten-Codes enthalten.
-- Es sind keine automatischen Tests/Benchmarks committed, daher erfolgt Validierung primär manuell.
-- Historische Skripte sind in Wurzel und `archived/` vorhanden; nur `vad_lang_subtitle.py` sollte als aktiv gelten, außer bewusstes Experimentieren.
+- Ein Abhängigkeits-Manifest ist nicht committed (`requirements.txt`, `pyproject.toml` und `setup.py` fehlen im Repository-Root zum Zeitpunkt des Schreibens).
+- Die Lizenz ist in der README als MIT angegeben, eine eigenständige `LICENSE`-Datei ist derzeit jedoch nicht vorhanden.
+- Lingua wird im Hauptablauf explizit mit `EN/ZH/JA/AR` initialisiert, während die Helper-Defaults mehr Kandidaten-Codes enthalten.
+- Es sind derzeit keine automatisierten Tests/Benchmarks committed; die Validierung erfolgt primär manuell.
+- Historische Skripte liegen im Root und in `archived/`; nur `vad_lang_subtitle.py` sollte als aktiv behandelt werden, außer bei bewusstem Experimentieren.
+- Das Skript gibt aktuell ausführliche Laufzeit-Logs und Debug-Ausgaben pro Segment aus; dieses Verhalten ist in der aktuellen Implementierung erwartbar.
 
 ---
 
 ## 🗺 Roadmap
 
-- Gepinnte `requirements.txt` oder `pyproject.toml` pflegen und hinzufügen.
-- Automatisierte Tests für Segmentierungs- und Zeitstempelbereinigungslogik ergänzen.
+- Eine gepinnte `requirements.txt` oder `pyproject.toml` ergänzen und pflegen.
+- Automatisierte Tests für Segmentierungs- und Zeitstempel-Bereinigungslogik ergänzen.
 - Benchmark- und Qualitätsdokumentation für mehrsprachige Randfälle ergänzen.
-- Optionale Konfigurationsdatei statt nur Code-Defaults einführen.
-- i18n-README-Satz in `i18n/` ausbauen und Sprachleisten synchron halten.
-- Sprachauswahlverhalten zwischen Detektorkonfiguration und Helper-Defaults klarer vereinheitlichen.
-- Eine formale `LICENSE`-Datei ergänzen, um der README-Angabe zu entsprechen.
+- Optionale Config-Datei-Unterstützung statt ausschließlich Code-Defaults hinzufügen.
+- Das i18n-README-Set in `i18n/` erweitern und Sprachleisten synchron halten.
+- Sprachwahlverhalten zwischen Detektorkonfiguration und Helper-Defaults klarstellen und vereinheitlichen.
+- Eine formale `LICENSE`-Datei hinzufügen, passend zur README-Angabe.
 
 ---
 
 ## 🔗 Danksagungen
 
 - [OpenAI Whisper](https://github.com/openai/whisper) für Speech-to-Text
-- [Snakers4/Silero-VAD](https://github.com/snakers4/silero-models) für robuste Sprachaktivitätserkennung
-- [Lingua](https://github.com/pemistahl/lingua-java) für hochpräzise Sprachekennung
+- [Snakers4/Silero-VAD](https://github.com/snakers4/silero-models) für robuste Voice Activity Detection
+- [Lingua](https://github.com/pemistahl/lingua-java) für hochpräzise Sprachidentifikation
 
 ---
 
 ## 🤝 Mitwirken
 
 1. Forken und klonen
-2. Neuen Branch erstellen: `git checkout -b feat/your-idea`
+2. Branch erstellen: `git checkout -b feat/your-idea`
 3. Committen und pushen
 4. PR öffnen
 
-Für größere Änderungen bitte folgendes beifügen:
+Bei größeren Änderungen bitte ergänzen:
 
-- Kurze Beschreibung der erwarteten Verhaltensänderung
-- Reproduzierbares Kommando-Beispiel
-- Relevante Vorher-/Nachher-Untertitel-Snippets
+- Eine kurze Beschreibung der erwarteten Verhaltensänderung
+- Ein reproduzierbares Befehlsbeispiel
+- Relevante Untertitel-Snippets vorher/nachher
+
+---
 
 ## 📫 Kontakt
 
-- Öffne ein Issue für Fehlerberichte, Nutzungsfragen und Feature-Requests.
-- Nutze die Support-Optionen oben für Sponsoring- oder Spendenefragen.
+- Öffne ein Issue für Bug-Reports, Nutzungsfragen und Feature-Requests.
+- Nutze die Support-Optionen oben für Sponsoring- und Spendenanfragen.
+
+---
 
 ## 📄 Lizenz
 

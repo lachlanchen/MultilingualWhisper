@@ -1,14 +1,13 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
-
 [![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
 
-一個可直接套用的字幕產生器，基於 OpenAI Whisper，並針對包含混合語言的影片擴充了精準的逐段語言偵測與精修流程。
+一個以 OpenAI Whisper 為核心的即插即用字幕產生器，進一步強化為可對混合語言影片做精準的逐片段語言偵測與優化。
 
-> 透過語言感知分段，從真實世界的混合語言媒體產生更乾淨的多語字幕。
+> 以語言感知分段，從真實世界的混合語言媒體產生更乾淨的多語字幕。
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
@@ -18,77 +17,96 @@
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 ![Interface](https://img.shields.io/badge/Interface-CLI-1F6FEB)
 ![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
+![Workflow](https://img.shields.io/badge/Flow-Silero%20%3E%20Whisper%20%3E%20Lingua-4D6D9A)
+![Refinement](https://img.shields.io/badge/Refinement-Text%20%2B%20Timestamps-0EA5E9)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-6B7280)
+![Maintained](https://img.shields.io/badge/Maintained-Yes-16A34A)
+
+
+### 文件語言
+
+| Locale | File |
+| --- | --- |
+
+| Focus | Value |
+| --- | --- |
+| Input | FFmpeg 相容音訊/影片 |
+| Pipeline | VAD segmentation -> Whisper transcription -> Lingua refinement |
+| Output | 正規化 `*.wav`、`*.srt` 與 `*.json` |
+| Best use | 逐片段語言標記的混合語言字幕 |
 
 ---
 
-## 目錄
+## Table of Contents
 
-- [概覽](#-概覽)
-- [快速一覽](#快速一覽)
-- [核心功能](#-核心功能)
-- [流程管線](#-流程管線)
-- [專案結構](#-專案結構)
-- [先決條件](#-先決條件)
-- [安裝](#-安裝)
-- [快速開始](#-快速開始)
-- [使用方式](#-使用方式)
-- [設定](#-設定)
-- [輸出格式](#-輸出格式)
-- [範例](#-範例)
-- [開發說明](#-開發說明)
-- [疑難排解](#-疑難排解)
-- [已知限制與前提假設](#-已知限制與前提假設)
-- [路線圖](#-路線圖)
+- [Overview](#-overview)
+- [At a Glance](#at-a-glance)
+- [Key Features](#-key-features)
+- [Pipeline Flow](#-pipeline-flow)
+- [Project Structure](#-project-structure)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Model Selection Guide](#-model-selection-guide)
+- [Usage](#-usage)
+- [Configuration](#-configuration)
+- [Output Format](#-output-format)
+- [Examples](#-examples)
+- [Development Notes](#-development-notes)
+- [Troubleshooting](#-troubleshooting)
+- [Known Limitations and Assumptions](#-known-limitations-and-assumptions)
+- [Roadmap](#-roadmap)
+- [Acknowledgments](#-acknowledgments)
+- [Contributing](#-contributing)
 - [Support](#-support)
-- [致謝](#-致謝)
-- [貢獻](#-貢獻)
-- [授權](#-授權)
+- [Contact](#-contact)
+- [License](#-license)
 
 ---
 
-## ✨ 概覽
+## ✨ Overview
 
-`MultilingualWhisper` 是一個以 [`vad_lang_subtitle.py`](vad_lang_subtitle.py) 為核心的 Python CLI 管線，整合了：
+`MultilingualWhisper` 是一套以 [`vad_lang_subtitle.py`](vad_lang_subtitle.py) 為核心的 Python CLI 流程，整合了：
 
-- Silero VAD 用於語音分段
-- OpenAI Whisper 用於轉錄與初步語言預測
-- Lingua 用於文字型語言精修
-- FFmpeg 用於抽取、正規化與媒體處理
+- 使用 Silero VAD 進行語音分段
+- 使用 OpenAI Whisper 進行轉錄與初步語言預測
+- 使用 Lingua 進行文本層語言修正
+- 使用 FFmpeg 進行抽取、正規化與媒體處理
 
-主要輸出為 `.srt` 與 `.json` 字幕檔，以及抽取並正規化後的 `.wav` 音訊。
+主要輸出為 `.srt` 與 `.json` 字幕檔，以及抽出的正規化 `.wav` 音訊。
 
-### 快速一覽
+### At a Glance
 
-| 項目 | 說明 |
+| Item | Details |
 |---|---|
-| 主入口 | `vad_lang_subtitle.py` |
-| 輸入 | FFmpeg 支援的影片/音訊 |
-| 輸出 | `*.wav`, `*.srt`, `*.json` |
-| 核心流程 | VAD -> Whisper -> Lingua -> 精修 |
-| 典型用途 | 混合語言字幕產生 |
+| Main entrypoint | `vad_lang_subtitle.py` |
+| Input | FFmpeg 支援的影片/音訊 |
+| Output | `*.wav`, `*.srt`, `*.json` |
+| Core flow | VAD -> Whisper -> Lingua -> refinement |
+| Typical use case | 混合語言字幕生成 |
 
 ---
 
-## 🚀 核心功能
+## 🚀 Key Features
 
-- **Silero VAD -> Whisper 管線**  
-  語音活動偵測（VAD）先將音訊切成語音片段，再由 Whisper 逐段轉錄。
+- **Silero VAD -> Whisper pipeline**  
+  先以語音活動偵測（VAD）將音訊切成語音片段，再由 Whisper 逐段轉錄。
 
-- **細粒度語言偵測**  
-  搭配 [Lingua](https://github.com/pemistahl/lingua-java) 與 Whisper 內建偵測器，為每個片段（甚至單字）標註 ISO 語言代碼（`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...）。
+- **Fine-grained language detection**  
+  結合 [Lingua](https://github.com/pemistahl/lingua-java) 與 Whisper 內建偵測器，對每個片段（甚至單字）標註 ISO 語言代碼（`en`、`zh`、`ja`、`ar`、`yue`、`ko`、`vi`、`es`、`fr` 等）。
 
-- **智慧片段精修**  
-  時間戳清理會避免縫隙與重疊；標點切分會在逗號、句點、問號等位置拆分過長轉錄；VAD 合併會把詞彙重新對齊到 VAD 區塊，使字幕更順暢；同時依語言套用長度感知的分段限制。
+- **Intelligent segment refinement**  
+  時間戳清理可避免空隙與重疊。標點切分可在逗號、句號、問號等位置拆分長轉錄。VAD 合併會把詞重新對齊到 VAD 區塊，讓字幕更流暢。長度感知分段會套用語言特定限制。
 
-- **多語字幕輸出**  
-  同時輸出 `.srt` 與 `.json`，並保留逐段語言標籤，方便你在下游播放器或編輯器中依語言套用樣式或篩選。
+- **Multilingual subtitles**  
+  同時輸出 `.srt` 與 `.json`，並保留每段語言標記，方便你在後續播放器或編輯器中依語言樣式化或篩選。
 
-- **穩健的媒體處理**  
-  透過 FFmpeg 自動抽取並正規化音訊、嘗試修復損壞容器，並套用動態正規化（`dynaudnorm`）以提升轉錄清晰度。
+- **Robust media handling**  
+  透過 FFmpeg 自動抽取與正規化音訊，會嘗試修復損壞容器，並套用動態正規化（`dynaudnorm`）以提升轉錄清晰度。
 
 ---
 
-## 🔁 流程管線
+## 🔁 Pipeline Flow
 
 ```text
 Input media
@@ -103,18 +121,18 @@ Input media
 
 `vad_lang_subtitle.py` 的主要執行路徑：
 
-1. 解析 CLI 參數（`--video-path`, `--whisper-model`, `--force`）。
-2. 依輸入檔名基底推導輸出路徑。
-3. 透過 FFmpeg 抽取/正規化音訊。
+1. 解析 CLI 參數（`--video-path`、`--whisper-model`、`--force`）。
+2. 從輸入檔 basename 推導輸出路徑。
+3. 透過 FFmpeg 抽取並正規化音訊。
 4. 載入 Silero VAD（`torch.hub`）與 Whisper 模型。
-5. 對 VAD 切分後的片段進行第一輪轉錄。
-6. 合併/精修片段後，對合併區間進行第二輪轉錄。
+5. 對 VAD 分段進行第一輪轉錄。
+6. 合併/優化片段後，對合併區段進行第二輪轉錄。
 7. 套用字幕長度縮減與時間戳清理。
 8. 儲存 `.srt` 與 `.json`。
 
 ---
 
-## 🗂 專案結構
+## 🗂 Project Structure
 
 ```text
 .
@@ -142,18 +160,18 @@ Input media
 └── .auto-readme-work/                  # README generation workspace artifacts
 ```
 
-> ⚠️ 注意：先前 README 提到 `requirements.txt`，但目前 repository root 並不存在該檔案。
+> ⚠️ 注意：先前 README 提到 `requirements.txt`，但目前在儲存庫根目錄中不存在。
 
 ---
 
-## ✅ 先決條件
+## ✅ Prerequisites
 
 - Python `3.10+`（已在現代 3.x 環境測試）
-- 已安裝 `ffmpeg`，且可由 `PATH` 存取
-- 執行所選 Whisper 模型所需的 CPU/GPU 與 RAM（若使用 `large`，強烈建議 GPU）
-- 首次執行需可連網，以下載 Whisper 模型權重與 Silero VAD 資源（`torch.hub`）
+- 已安裝 `ffmpeg`，且可在 `PATH` 中找到
+- 依所選 Whisper 模型具備足夠 CPU/GPU 與 RAM（若用 `large`，強烈建議 GPU）
+- 首次執行需可連網下載 Whisper 權重與 Silero VAD 資產（`torch.hub`）
 
-此腳本使用的 Python 套件包含：
+腳本使用的 Python 套件包含：
 
 - `torch`
 - `torchaudio`
@@ -161,7 +179,7 @@ Input media
 - `lingua-language-detector`
 - `tqdm`
 
-快速驗證指令：
+快速檢查指令：
 
 ```bash
 python --version
@@ -170,23 +188,23 @@ ffmpeg -version
 
 ---
 
-## 🔧 安裝
+## 🔧 Installation
 
-1. **Clone 此 repo**
+1. **Clone this repo**
 
 ```bash
 git clone git@github.com:lachlanchen/whisper_with_lang_detect.git
 cd whisper_with_lang_detect
 ```
 
-2. **建立並啟用虛擬環境**
+2. **Create and activate a virtual environment**
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-3. **安裝相依套件**
+3. **Install dependencies**
 
 ```bash
 pip install -r requirements.txt
@@ -198,13 +216,13 @@ pip install -r requirements.txt
 pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 ```
 
-並確認系統層已安裝 FFmpeg。
+並確認系統層級已安裝 FFmpeg。
 
 ---
 
-## ⚡ 快速開始
+## ⚡ Quick Start
 
-如果你想從 clone 到產生字幕的最快路徑：
+若你想從 clone 直接快速產生字幕：
 
 ```bash
 python3 -m venv venv
@@ -213,17 +231,36 @@ pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 python vad_lang_subtitle.py -t path/to/video.mp4 --whisper-model small --force
 ```
 
-提示：迭代時先用 `small`，最後再切換到 `large` 以取得最佳品質。
+提示：迭代階段可先用 `small`，最終品質再改用 `large`。
 
-預期會在輸入媒體旁產生：
+在輸入媒體旁預期會產生：
 
-- `*.wav`：正規化後的抽取音訊
-- `*.srt`：供播放器/編輯器使用的字幕檔
-- `*.json`：結構化多語字幕中繼資料
+- `*.wav` 正規化抽取音訊
+- `*.srt` 供播放器/編輯器使用的字幕檔
+- `*.json` 結構化多語字幕中繼資料
 
 ---
 
-## 🛠 使用方式
+## 🎚 Model Selection Guide
+
+依速度與品質需求選擇 Whisper 模型：
+
+| Model | Speed | Quality | Recommended Use |
+|---|---|---|---|
+| `tiny` / `base` | Fastest | Lowest | 快速 smoke test 與流程驗證 |
+| `small` | Fast | Good | 日常迭代與本機開發 |
+| `medium` | Medium | Better | 兼顧效率與品質的生產流程 |
+| `large` (default) | Slowest | Best | 最終高品質字幕輸出 |
+
+實務建議流程：
+
+1. 先用 `small --force` 迭代
+2. 驗證時間軸與語言標記
+3. 最後改用 `large --force` 產出交付版本
+
+---
+
+## 🛠 Usage
 
 ```bash
 python vad_lang_subtitle.py \
@@ -232,46 +269,52 @@ python vad_lang_subtitle.py \
   [--force]
 ```
 
-### CLI 選項
+### CLI Options
 
-| 旗標 | 別名 | 必填 | 說明 |
+| Flag | Alias | Required | Description |
 |---|---|---|---|
-| `--video-path` | `-t` | 是 | 輸入媒體路徑（FFmpeg 支援的影片/音訊） |
-| `--whisper-model` | — | 否 | Whisper 模型名稱（預設：`large`） |
-| `--force` | — | 否 | 即使 `.wav`、`.srt` 或 `.json` 已存在也強制重跑 |
+| `--video-path` | `-t` | Yes | 輸入媒體路徑（FFmpeg 支援的音訊/影片） |
+| `--whisper-model` | — | No | Whisper 模型名稱（預設：`large`） |
+| `--force` | — | No | 即使 `.wav`、`.srt` 或 `.json` 已存在也強制重跑 |
 
-### 處理行為
+### Processing Behavior
 
-- 輸出檔名由輸入基底路徑自動推導。
-- 以 `input.mp4` 為例，輸出為 `input.wav`（正規化音訊）、`input.srt`（含時間戳字幕）與 `input.json`（中繼資料，含 `start`、`end`、`lang`、`text`，以及可選詞級時間資訊）。
-- 若已有 `.srt` 或 `.json`，預設會跳過；設定 `--force` 才會重跑。
+- 輸出檔名由輸入檔基底路徑推導。
+- 對 `input.mp4`，輸出為 `input.wav`（正規化音訊）、`input.srt`（含時間戳字幕）、`input.json`（含 `start`、`end`、`lang`、`text`，可選詞級時間戳中繼資料）。
+- 若 `.srt` 或 `.json` 已存在會跳過，除非設定 `--force`。
 
 ---
 
-## ⚙️ 設定
+## ⚙️ Configuration
 
-目前設定主要由 CLI 參數與程式內建預設值共同驅動：
+目前設定主要由 CLI 參數與程式內預設值控制：
 
-| 設定區塊 | 目前行為 |
+| Config Area | Current Behavior |
 |---|---|
-| Whisper 模型 | `--whisper-model`（預設 `large`） |
-| 處理取樣率 | VAD/轉錄流程硬編碼為 `16000` |
-| FFmpeg 抽取 | 單聲道 WAV、`44100 Hz`，並套用 `dynaudnorm=f=100` |
-| Lingua 偵測器 | 主流程初始化為 `ENGLISH`、`CHINESE`、`JAPANESE`、`ARABIC` |
-| Whisper 側過濾輔助預設 | 包含 `en`、`zh`、`ja`、`ar`、`yue`、`ko`、`vi`、`es`、`fr` |
+| Whisper model | `--whisper-model`（預設 `large`） |
+| Processing sample rate | VAD/轉錄流程固定為 `16000` |
+| FFmpeg extraction | 單聲道 WAV、`44100 Hz`，並套用 `dynaudnorm=f=100` |
+| Lingua detector | 主流程初始化為 `ENGLISH`、`CHINESE`、`JAPANESE`、`ARABIC` |
+| Whisper-side filtering helper defaults | 包含 `en`、`zh`、`ja`、`ar`、`yue`、`ko`、`vi`、`es`、`fr` |
 
-前提說明：輔助預設中的語言清單與主偵測器設定並非完全一致；本 README 僅忠實描述目前實作行為。
+假設說明：helper 預設語言列表與主偵測器設定並非完全一致；本 README 依目前實作行為如實保留。
+
+從目前腳本補充的實作細節：
+
+- 執行時會套用 `torch.set_num_threads(1)`。
+- VAD 模型透過 `torch.hub.load(...)` 從 `snakers4/silero-vad` 載入。
+- 片段清理會移除語言為 `und` 或文字為空的項目。
 
 ---
 
-## 📦 輸出格式
+## 📦 Output Format
 
-每個輸入媒體會輸出兩種字幕產物：
+工具會為每個輸入媒體產生兩種字幕輸出：
 
 - `*.srt`：標準字幕文字，時間戳格式為 `HH:MM:SS,mmm`。
-- `*.json`：結構化字幕清單，包含格式化時間戳與語言標籤。
+- `*.json`：結構化字幕清單，包含格式化時間戳與語言標記。
 
-常見 JSON 片段格式：
+典型 JSON 片段結構：
 
 ```json
 {
@@ -292,27 +335,27 @@ python vad_lang_subtitle.py \
 
 說明：
 
-- `start`/`end` 在 JSON 中會序列化為 SRT 風格字串。
-- `words` 是否出現取決於片段處理/精修階段。
-- 對於語言不確定區段，`lang` 可能為 `und`。
+- JSON 輸出中的 `start`/`end` 以 SRT 風格字串序列化。
+- `words` 是否存在取決於片段處理/優化階段。
+- 對於不確定語言區段，`lang` 可能為 `und`。
 
 ---
 
-## 🧪 範例
+## 🧪 Examples
 
-在 MP4 上執行：
+對 MP4 執行：
 
 ```bash
 python vad_lang_subtitle.py -t data/9b7bfbfbe8ab1b9925cfdc34f2f9f7_2024_03_15_22_08_26_COMPLETED.MP4 --whisper-model large
 ```
 
-在 MOV 上執行並強制覆寫：
+對 MOV 執行並強制覆寫：
 
 ```bash
 python vad_lang_subtitle.py -t data/IMG_6276.MOV --whisper-model large --force
 ```
 
-在 FFmpeg 支援的純音訊輸入上執行：
+對 FFmpeg 支援的純音訊輸入執行：
 
 ```bash
 python vad_lang_subtitle.py -t "data/深圳动物园中心喷泉.m4a" --whisper-model medium
@@ -329,92 +372,108 @@ done
 
 ---
 
-## 🧭 開發說明
+## 🧭 Development Notes
 
-- 目前正式主腳本為 `vad_lang_subtitle.py`。
-- 歷史檔案（`*.old`、`*.shorterlength*`、`archived/`）可供參考，但看起來非主要版本。
-- 目前尚未提交打包專案骨架（`pyproject.toml`、`setup.py`），也沒有 CI/測試套件。
-- `data/` 內含大型範例媒體產物；實驗時請留意 repository 體積與本機磁碟使用量。
-- 程式中有 `clean_subtitles_dict()`，但目前主流程未呼叫。
-- `--force` 是目前用於反覆調參時確保輸出重建的機制。
+- 目前正式使用的主腳本是 `vad_lang_subtitle.py`。
+- 歷史檔案（`*.old`、`*.shorterlength*`、`archived/`）可供參考，但看起來非正式主線。
+- 目前尚未提交封裝專案骨架（`pyproject.toml`、`setup.py`）與 CI/測試套件。
+- `data/` 含大型樣本媒體；實驗時請留意儲存庫大小與本機磁碟用量。
+- 程式內有 `clean_subtitles_dict()`，但目前主流程未呼叫。
+- 目前透過 `--force` 來確保在調整過程中重新產生輸出。
 
-建議本機開發迴圈：
+建議本機開發迭代流程：
 
 ```bash
 python vad_lang_subtitle.py -t data/<your_media>.mp4 --whisper-model small --force
 ```
 
-迭代時可先用較小模型（`tiny`/`base`/`small`），最後再切換到 `large` 取得較佳輸出品質。
+迭代時先用較小模型（`tiny`/`base`/`small`），最終輸出再切換到 `large`。
 
 ---
 
-## 🩺 疑難排解
+## 🩺 Troubleshooting
 
-| 症狀 | 建議處理 |
+| Symptom | What to do |
 |---|---|
 | `ffmpeg: command not found` | 安裝 FFmpeg，並用 `ffmpeg -version` 驗證。 |
-| 首次執行很慢或看似卡住 | 首次下載模型（Whisper + Silero）可能較久，後續重跑通常會更快。 |
-| CUDA / GPU 錯誤 | 先改用較小 Whisper 模型（`small`、`base`、`tiny`）嘗試 CPU 路徑，並確認 PyTorch 版本與環境相符。 |
-| 輸出檔沒有重新產生 | 使用 `--force` 覆寫既有衍生檔。 |
-| `pip install -r requirements.txt` 因檔案不存在而失敗 | 改用安裝章節提供的手動相依安裝指令。 |
-| 短片段語言標註不準 | 在極短或高噪聲區段常見；目前邏輯雖整合 Whisper 與 Lingua，仍有邊界案例。 |
-| 字幕輸出為空或幾乎為空 | 確認輸入確實有語音、檢查抽取出的 `.wav`，並在確認 FFmpeg 抽取正常後加 `--force` 重跑。 |
-| 相鄰字幕行語言標籤頻繁跳動 | 在非常短的片段上可能出現；可於下游工具依語言與最短時長條件做後處理合併。 |
+| First run is very slow or appears stuck | 首次下載模型（Whisper + Silero）可能較久；再次執行會更快。 |
+| CUDA / GPU errors | 可先以較小 Whisper 模型（`small`、`base`、`tiny`）走 CPU，並確認 PyTorch 版本與環境匹配。 |
+| Output files are not regenerated | 使用 `--force` 覆寫既有衍生檔。 |
+| `pip install -r requirements.txt` fails because file not found | 請使用 Installation 區塊提供的手動安裝指令。 |
+| Inaccurate language tagging on short segments | 在極短或高噪音片段可能發生；目前邏輯已結合 Whisper 與 Lingua，但仍有邊界情況。 |
+| Empty or near-empty subtitle output | 確認輸入含語音內容，檢查抽取出的 `.wav`，並在確認 FFmpeg 抽取正常後用 `--force` 重試。 |
+| Unexpected language flips between neighboring lines | 極短片段可能出現此現象；可在下游工具依語言與最短時長條件做後處理合併。 |
+| FFmpeg extraction fails on damaged media | 腳本會在容器修復（`-c copy -movflags +faststart`）後重試，但嚴重損毀檔案仍可能失敗。 |
+
+快速診斷：
+
+```bash
+python --version
+ffmpeg -version
+python -c "import torch, whisper, torchaudio, tqdm; print('python deps ok')"
+```
 
 ---
 
-## ⚠️ 已知限制與前提假設
+## ⚠️ Known Limitations and Assumptions
 
-- 目前尚未提交相依清單（撰寫當下 repository root 缺少 `requirements.txt`、`pyproject.toml`、`setup.py`）。
-- README 宣告授權為 MIT，但目前尚無獨立 `LICENSE` 檔案。
-- 主流程中 Lingua 明確初始化為 `EN/ZH/JA/AR`，但輔助預設包含更多候選語言代碼。
-- 目前未提交自動化測試/基準，因此驗證主要仰賴人工。
-- 根目錄與 `archived/` 含有歷史腳本；除非刻意實驗，應以 `vad_lang_subtitle.py` 為主。
+- 目前尚未提交相依清單（`requirements.txt`、`pyproject.toml`、`setup.py` 在撰寫當下皆不在儲存庫根目錄）。
+- README 宣告授權為 MIT，但目前尚無獨立 `LICENSE` 檔。
+- 主流程中的 Lingua 僅明確初始化 `EN/ZH/JA/AR`，而 helper 預設則包含更多候選語言代碼。
+- 目前沒有提交自動化測試/基準，因此驗證主要依賴手動流程。
+- 根目錄與 `archived/` 含歷史腳本；除非刻意實驗，應只把 `vad_lang_subtitle.py` 視為有效主程式。
+- 目前腳本會輸出較詳細的執行日誌與逐片段除錯資訊；這是既有實作的預期行為。
 
 ---
 
-## 🗺 路線圖
+## 🗺 Roadmap
 
-- 新增並維護鎖定版本的 `requirements.txt` 或 `pyproject.toml`。
-- 新增分段與時間戳清理邏輯的自動化測試。
-- 補上多語邊界案例的效能與品質評估文件。
-- 新增可選設定檔支援，取代僅靠程式內預設值。
-- 擴充 `i18n/` README 語言集，並保持語言導覽列同步。
-- 釐清並統一偵測器設定與輔助預設間的語言選擇行為。
+- 新增並維護鎖版的 `requirements.txt` 或 `pyproject.toml`。
+- 為分段與時間戳清理邏輯加入自動化測試。
+- 增加多語邊界案例的效能與品質評估文件。
+- 新增可選設定檔支援，取代純程式預設。
+- 擴充 `i18n/` README 並維持語言列同步。
+- 釐清並統一偵測器設定與 helper 預設間的語言選擇邏輯。
 - 新增正式 `LICENSE` 檔，與 README 宣告一致。
 
 ---
 
-## 🔗 致謝
+## 🔗 Acknowledgments
 
-- [OpenAI Whisper](https://github.com/openai/whisper) 提供語音轉文字能力
-- [Snakers4/Silero-VAD](https://github.com/snakers4/silero-models) 提供穩健的語音活動偵測
-- [Lingua](https://github.com/pemistahl/lingua-java) 提供高精度語言辨識
+- [OpenAI Whisper](https://github.com/openai/whisper) for speech-to-text
+- [Snakers4/Silero-VAD](https://github.com/snakers4/silero-models) for robust voice activity detection
+- [Lingua](https://github.com/pemistahl/lingua-java) for high-accuracy language identification
 
 ---
 
-## 🤝 貢獻
+## 🤝 Contributing
 
 1. Fork 並 clone
 2. 建立分支：`git checkout -b feat/your-idea`
 3. Commit 並 push
-4. 發起 PR
+4. 開啟 PR
 
-對於較大幅度修改，請附上：
+若是較大改動，請附上：
 
 - 預期行為變更的簡短說明
 - 可重現的指令範例
-- 在適用時提供修改前/後字幕片段
+- 適用時提供變更前/後字幕片段
 
 ---
-
-## 📄 授權
-
-MIT © Lachlan Chen
-
 
 ## ❤️ Support
 
 | Donate | PayPal | Stripe |
 | --- | --- | --- |
 | [![Donate](https://camo.githubusercontent.com/24a4914f0b42c6f435f9e101621f1e52535b02c225764b2f6cc99416926004b7/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f446f6e6174652d4c617a79696e674172742d3045413545393f7374796c653d666f722d7468652d6261646765266c6f676f3d6b6f2d6669266c6f676f436f6c6f723d7768697465)](https://chat.lazying.art/donate) | [![PayPal](https://camo.githubusercontent.com/d0f57e8b016517a4b06961b24d0ca87d62fdba16e18bbdb6aba28e978dc0ea21/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f50617950616c2d526f6e677a686f754368656e2d3030343537433f7374796c653d666f722d7468652d6261646765266c6f676f3d70617970616c266c6f676f436f6c6f723d7768697465)](https://paypal.me/RongzhouChen) | [![Stripe](https://camo.githubusercontent.com/1152dfe04b6943afe3a8d2953676749603fb9f95e24088c92c97a01a897b4942/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f5374726970652d446f6e6174652d3633354246463f7374796c653d666f722d7468652d6261646765266c6f676f3d737472697065266c6f676f436f6c6f723d7768697465)](https://buy.stripe.com/aFadR8gIaflgfQV6T4fw400) |
+
+## 📫 Contact
+
+- 請透過 issue 回報 bug、提問使用問題或提出功能需求。
+- 贊助與捐款相關請使用上方 support 選項。
+
+---
+
+## 📄 License
+
+MIT © Lachlan Chen

@@ -1,7 +1,6 @@
 [English](README.md) · [العربية](i18n/README.ar.md) · [Español](i18n/README.es.md) · [Français](i18n/README.fr.md) · [日本語](i18n/README.ja.md) · [한국어](i18n/README.ko.md) · [Tiếng Việt](i18n/README.vi.md) · [中文 (简体)](i18n/README.zh-Hans.md) · [中文（繁體）](i18n/README.zh-Hant.md) · [Deutsch](i18n/README.de.md) · [Русский](i18n/README.ru.md)
 
 
-
 [![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
@@ -20,11 +19,20 @@ A drop-in subtitle generator built on OpenAI Whisper, extended with precise per-
 ![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
 ![Workflow](https://img.shields.io/badge/Flow-Silero%20%3E%20Whisper%20%3E%20Lingua-4D6D9A)
 ![Refinement](https://img.shields.io/badge/Refinement-Text%20%2B%20Timestamps-0EA5E9)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-6B7280)
+![Maintained](https://img.shields.io/badge/Maintained-Yes-16A34A)
+
+> 🌍 **Multilingual docs available**: English + 10 translated README variants in [`i18n/`](i18n/), linked in the language bar above.
+
+### Documentation Languages
+
+| Locale | File |
+| --- | --- |
 
 | Focus | Value |
 | --- | --- |
 | Input | FFmpeg-compatible audio/video |
-| Pipeline | VAD segmentation → Whisper transcription → Lingua refinement |
+| Pipeline | VAD segmentation -> Whisper transcription -> Lingua refinement |
 | Output | Normalized `*.wav`, `*.srt`, and `*.json` |
 | Best use | Mixed-language subtitles with per-segment language tags |
 
@@ -40,6 +48,7 @@ A drop-in subtitle generator built on OpenAI Whisper, extended with precise per-
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
+- [Model Selection Guide](#-model-selection-guide)
 - [Usage](#-usage)
 - [Configuration](#-configuration)
 - [Output Format](#-output-format)
@@ -48,10 +57,10 @@ A drop-in subtitle generator built on OpenAI Whisper, extended with precise per-
 - [Troubleshooting](#-troubleshooting)
 - [Known Limitations and Assumptions](#-known-limitations-and-assumptions)
 - [Roadmap](#-roadmap)
-- [Support](#-support)
-- [Contact](#-contact)
 - [Acknowledgments](#-acknowledgments)
 - [Contributing](#-contributing)
+- [Support](#-support)
+- [Contact](#-contact)
 - [License](#-license)
 
 ---
@@ -81,19 +90,19 @@ Primary outputs are subtitle files in `.srt` and `.json`, plus extracted normali
 
 ## 🚀 Key Features
 
-- **Silero VAD -> Whisper pipeline**
+- **Silero VAD -> Whisper pipeline**  
   Voice Activity Detection (VAD) splits audio into speech segments, then Whisper transcribes each chunk.
 
-- **Fine-grained language detection**
+- **Fine-grained language detection**  
   Uses [Lingua](https://github.com/pemistahl/lingua-java) alongside Whisper’s own detector to tag every segment (even individual words) with ISO language codes (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...).
 
-- **Intelligent segment refinement**
+- **Intelligent segment refinement**  
   Timestamp cleanup ensures no gaps or overlaps. Punctuation splits break long transcriptions at commas, periods, question marks, etc. VAD merges re-align words back to VAD blocks for smoother subtitles. Length-aware segmentation applies language-specific limits.
 
-- **Multilingual subtitles**
+- **Multilingual subtitles**  
   Outputs both `.srt` and `.json`, preserving language tags per segment so you can style or filter by language in downstream players or editors.
 
-- **Robust media handling**
+- **Robust media handling**  
   Auto-extracts and normalizes audio via FFmpeg, attempts repair for broken containers, and applies dynamic normalization (`dynaudnorm`) for clearer transcripts.
 
 ---
@@ -233,6 +242,25 @@ Expected artifacts next to your input media:
 
 ---
 
+## 🎚 Model Selection Guide
+
+Choose a Whisper model based on speed vs quality goals:
+
+| Model | Speed | Quality | Recommended Use |
+|---|---|---|---|
+| `tiny` / `base` | Fastest | Lowest | Fast smoke tests and pipeline validation |
+| `small` | Fast | Good | Daily iteration and local development |
+| `medium` | Medium | Better | Balanced production workflows |
+| `large` (default) | Slowest | Best | Final subtitle exports for highest quality |
+
+Practical pattern:
+
+1. Iterate with `small --force`
+2. Validate timing and language tags
+3. Re-run with `large --force` for delivery output
+
+---
+
 ## 🛠 Usage
 
 ```bash
@@ -271,6 +299,12 @@ Current configuration is mainly CLI-driven and code-default-driven:
 | Whisper-side filtering helper defaults | Includes `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
 
 Assumption note: language lists in helper defaults and main detector setup are not fully identical; this README preserves current behavior as implemented.
+
+Additional implementation detail from current script:
+
+- `torch.set_num_threads(1)` is applied at runtime.
+- VAD model is loaded from `snakers4/silero-vad` via `torch.hub.load(...)`.
+- Segment cleaning removes entries where language is `und` or text is empty.
 
 ---
 
@@ -370,6 +404,15 @@ Use a smaller model (`tiny`/`base`/`small`) while iterating, then switch to `lar
 | Inaccurate language tagging on short segments | This can happen on extremely short/noisy spans; current logic combines Whisper and Lingua but still has edge cases. |
 | Empty or near-empty subtitle output | Confirm input has speech, inspect extracted `.wav`, and retry with `--force` after validating FFmpeg extraction. |
 | Unexpected language flips between neighboring lines | This can occur on very short segments; consider post-merging in downstream tooling by language and minimum duration. |
+| FFmpeg extraction fails on damaged media | Script retries after container repair (`-c copy -movflags +faststart`), but heavily corrupted files may still fail. |
+
+Quick diagnostics:
+
+```bash
+python --version
+ffmpeg -version
+python -c "import torch, whisper, torchaudio, tqdm; print('python deps ok')"
+```
 
 ---
 
@@ -380,6 +423,7 @@ Use a smaller model (`tiny`/`base`/`small`) while iterating, then switch to `lar
 - Lingua is explicitly initialized with `EN/ZH/JA/AR` in main flow, while helper defaults include more candidate codes.
 - No automated tests/benchmarks are currently committed, so validation is primarily manual.
 - Historical scripts are present in root and `archived/`; only `vad_lang_subtitle.py` should be treated as active unless intentionally experimenting.
+- The script currently prints verbose runtime logs and per-segment debug output; this is expected behavior in current implementation.
 
 ---
 

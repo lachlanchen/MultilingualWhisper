@@ -1,14 +1,13 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
-
 [![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
 
-OpenAI Whisper をベースにした、差し替え可能な字幕生成ツールです。複数言語が混在する動画に対して、セグメント単位で高精度な言語検出とリファイン処理を追加した実装です。
+OpenAI Whisper を基盤にしたドロップイン字幕ジェネレーターです。混在言語を含む動画向けに、セグメント単位の高精度な言語検出とリファイン処理を拡張しています。
 
-> 言語を意識したセグメンテーションにより、実運用の混在言語メディアからよりクリーンな多言語字幕を生成します。
+> 言語対応セグメンテーションにより、実運用の混在言語メディアからよりクリーンな多言語字幕を生成します。
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
@@ -20,111 +19,121 @@ OpenAI Whisper をベースにした、差し替え可能な字幕生成ツー�
 ![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
 ![Workflow](https://img.shields.io/badge/Flow-Silero%20%3E%20Whisper%20%3E%20Lingua-4D6D9A)
 ![Refinement](https://img.shields.io/badge/Refinement-Text%20%2B%20Timestamps-0EA5E9)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-6B7280)
+![Maintained](https://img.shields.io/badge/Maintained-Yes-16A34A)
 
-| 焦点 | 値 |
+> 🌍 **多言語ドキュメント対応**: `i18n/` に英語 + 10 言語の README 翻訳版を用意しています（上部の言語バーから移動可能）。
+
+### ドキュメント言語
+
+| Locale | File |
 | --- | --- |
-| 入力 | FFmpeg で扱える音声/動画 |
-| パイプライン | VAD 分割 → Whisper 文字起こし → Lingua リファイン |
-| 出力 | 正規化済み `*.wav`、`*.srt`、`*.json` |
-| 想定用途 | セグメントごとに言語タグを付与した混在言語字幕 |
+
+| Focus | Value |
+| --- | --- |
+| Input | FFmpeg 互換の音声/動画 |
+| Pipeline | VAD segmentation -> Whisper transcription -> Lingua refinement |
+| Output | 正規化済み `*.wav`、`*.srt`、`*.json` |
+| Best use | セグメントごとの言語タグ付き混在言語字幕 |
 
 ---
 
-## 目次
+## Table of Contents
 
-- [概要](#-概要)
-- [ひと目でわかる概要](#ひと目でわかる概要)
-- [主な機能](#-主な機能)
-- [パイプラインの流れ](#-パイプラインの流れ)
-- [プロジェクト構成](#-プロジェクト構成)
-- [前提条件](#-前提条件)
-- [インストール](#-インストール)
-- [クイックスタート](#-クイックスタート)
-- [使い方](#-使い方)
-- [設定](#-設定)
-- [出力フォーマット](#-出力フォーマット)
-- [実行例](#-実行例)
-- [開発ノート](#-開発ノート)
-- [トラブルシューティング](#-トラブルシューティング)
-- [既知の制約と前提](#-既知の制約と前提)
-- [ロードマップ](#-ロードマップ)
+- [Overview](#-overview)
+- [At a Glance](#at-a-glance)
+- [Key Features](#-key-features)
+- [Pipeline Flow](#-pipeline-flow)
+- [Project Structure](#-project-structure)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Model Selection Guide](#-model-selection-guide)
+- [Usage](#-usage)
+- [Configuration](#-configuration)
+- [Output Format](#-output-format)
+- [Examples](#-examples)
+- [Development Notes](#-development-notes)
+- [Troubleshooting](#-troubleshooting)
+- [Known Limitations and Assumptions](#-known-limitations-and-assumptions)
+- [Roadmap](#-roadmap)
+- [Acknowledgments](#-acknowledgments)
+- [Contributing](#-contributing)
 - [Support](#-support)
-- [謝辞](#-謝辞)
-- [コントリビュート](#-コントリビュート)
 - [Contact](#-contact)
-- [ライセンス](#-ライセンス)
+- [License](#-license)
 
 ---
 
-## ✨ 概要
+## ✨ Overview
 
-`MultilingualWhisper` は、[`vad_lang_subtitle.py`](vad_lang_subtitle.py) を中心とした Python CLI パイプラインです。以下を組み合わせています。
+`MultilingualWhisper` は [`vad_lang_subtitle.py`](../vad_lang_subtitle.py) を中心とした Python CLI パイプラインです。以下を組み合わせています。
 
-- 音声区間分割のための Silero VAD
-- 文字起こしと初期言語予測のための OpenAI Whisper
-- テキストベースの言語リファインのための Lingua
-- 抽出・正規化・メディア処理のための FFmpeg
+- Silero VAD による音声区間分割
+- OpenAI Whisper による文字起こしと初期言語推定
+- Lingua によるテキストベース言語リファイン
+- FFmpeg による抽出・正規化・メディア処理
 
-主な出力は `.srt` と `.json` の字幕ファイル、および抽出・正規化した `*.wav` 音声です。
+主な出力は `.srt` と `.json` の字幕ファイル、および抽出・正規化された `.wav` 音声です。
 
-### ひと目でわかる概要
+### At a Glance
 
-| 項目 | 詳細 |
+| Item | Details |
 |---|---|
-| メインエントリーポイント | `vad_lang_subtitle.py` |
-| 入力 | FFmpeg が対応する動画/音声 |
-| 出力 | `*.wav`, `*.srt`, `*.json` |
-| コアフロー | VAD -> Whisper -> Lingua -> リファイン |
-| 典型的な用途 | 混在言語向け字幕生成 |
+| Main entrypoint | `vad_lang_subtitle.py` |
+| Input | FFmpeg が対応する動画/音声 |
+| Output | `*.wav`, `*.srt`, `*.json` |
+| Core flow | VAD -> Whisper -> Lingua -> refinement |
+| Typical use case | 混在言語字幕の生成 |
 
 ---
 
-## 🚀 主な機能
+## 🚀 Key Features
 
-- **Silero VAD → Whisper パイプライン**
-  Voice Activity Detection (VAD) が音声を発話区間に分割し、Whisper が各チャンクを文字起こしします。
+- **Silero VAD -> Whisper pipeline**  
+  Voice Activity Detection (VAD) で音声を発話セグメントに分割し、Whisper が各チャンクを文字起こしします。
 
-- **きめ細かな言語検出**
-  [Lingua](https://github.com/pemistahl/lingua-java) を Whisper の言語検出と併用し、各セグメント（必要に応じて単語）に ISO 言語コード (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...) を付与します。
+- **Fine-grained language detection**  
+  [Lingua](https://github.com/pemistahl/lingua-java) と Whisper の言語検出を併用し、各セグメント（単語レベルを含む）に ISO 言語コード（`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...）を付与します。
 
-- **インテリジェントなセグメント整形**
-  タイムスタンプをクリーンアップしてギャップや重なりを解消します。句読点ベースの分割により、長い文字起こしをカンマ・ピリオド・疑問符などで適切に分割します。VAD で再結合した語を VAD ブロックへ再整列し、より滑らかな字幕にします。長さに応じた分割では言語別の文字数制約も考慮します。
+- **Intelligent segment refinement**  
+  タイムスタンプをクリーンアップしてギャップや重なりを解消します。句読点分割で長い転写をカンマ・ピリオド・疑問符などで分割し、VAD マージで単語を VAD ブロックへ再整列して字幕を滑らかにします。さらに言語ごとの長さ制限を適用します。
 
-- **多言語字幕出力**
-  `.srt` と `.json` の両方を出力し、セグメントごとに言語タグを保持します。これにより、下流のプレイヤーや編集ツールで言語別スタイリングやフィルタが可能です。
+- **Multilingual subtitles**  
+  `.srt` と `.json` の両方を出力し、セグメントごとの言語タグを保持します。これにより下流のプレイヤーや編集ツールで言語別スタイリング/フィルタリングが可能です。
 
-- **堅牢なメディア処理**
-  FFmpeg で音声を自動抽出・正規化し、壊れたコンテナの修復を試みます。さらに動的ノーマライズ（`dynaudnorm`）で文字起こし品質を改善します。
+- **Robust media handling**  
+  FFmpeg により音声を自動抽出・正規化し、壊れたコンテナの修復を試行、`dynaudnorm` による動的正規化で転写を明瞭にします。
 
 ---
 
-## 🔁 パイプラインの流れ
+## 🔁 Pipeline Flow
 
 ```text
-入力メディア
-  -> FFmpeg 抽出 + 正規化 (.wav)
-  -> Silero VAD 音声区間タイムスタンプ
-  -> Whisper 文字起こし + 言語予測
-  -> Lingua によるセグメント言語リファイン
-  -> セグメントの統合/分割/タイムスタンプ清掃
-  -> 長さに応じた字幕リファイン
-  -> .srt と .json を出力
+Input media
+  -> FFmpeg extract + normalize (.wav)
+  -> Silero VAD speech timestamps
+  -> Whisper transcription + language prediction
+  -> Lingua segment language refinement
+  -> Segment merge/split/timestamp cleanup
+  -> Length-aware subtitle refinement
+  -> Output .srt + .json
 ```
 
-`vad_lang_subtitle.py` の主な実行パス:
+`vad_lang_subtitle.py` における主な実行フロー:
 
-1. CLI 引数（`--video-path`, `--whisper-model`, `--force`）を解析します。
-2. 入力ファイルのベース名から出力パスを決定します。
-3. FFmpeg で音声を抽出・正規化します。
-4. Silero VAD（`torch.hub`）と Whisper モデルを読み込みます。
-5. VAD チャンクで1回目の文字起こしを実行します。
-6. セグメントを統合・整形した後、統合区間で2回目の文字起こしを実行します。
-7. 字幕長の調整とタイムスタンプのクリーンアップを適用します。
-8. `.srt` と `.json` を保存します。
+1. CLI 引数（`--video-path`, `--whisper-model`, `--force`）を解析
+2. 入力 basename から出力パスを解決
+3. FFmpeg で音声を抽出/正規化
+4. Silero VAD（`torch.hub`）と Whisper モデルをロード
+5. VAD チャンクに対して 1 回目の転写
+6. セグメントをマージ/リファインし、マージ後区間に対して 2 回目の転写
+7. 字幕長リダクションとタイムスタンプクリーンアップを適用
+8. `.srt` と `.json` を保存
 
 ---
 
-## 🗂 プロジェクト構成
+## 🗂 Project Structure
 
 ```text
 .
@@ -152,18 +161,18 @@ OpenAI Whisper をベースにした、差し替え可能な字幕生成ツー�
 └── .auto-readme-work/                  # README generation workspace artifacts
 ```
 
-> ⚠️ 注記: 以前の README では `requirements.txt` が言及されていましたが、現在はリポジトリのルートに存在しません。
+> ⚠️ 注: 以前の README では `requirements.txt` に言及していますが、現在はリポジトリルートに存在しません。
 
 ---
 
-## ✅ 前提条件
+## ✅ Prerequisites
 
-- Python `3.10+`（近代的な 3.x 環境で検証）
-- `ffmpeg` がインストールされ、`PATH` 上にあること
-- 選択した Whisper モデルに応じて十分な CPU/GPU と RAM（`large` は GPU 強く推奨）
-- 初回実行時に Whisper モデルと Silero VAD アセット（`torch.hub`）を取得するためのインターネット接続
+- Python `3.10+`（現行 3.x 環境で検証）
+- `ffmpeg` がインストール済みで `PATH` から実行可能
+- 選択する Whisper モデルに応じた CPU/GPU と RAM（`large` では GPU を強く推奨）
+- 初回実行時に Whisper 重みと Silero VAD アセット（`torch.hub`）を取得するためのインターネット接続
 
-スクリプトで使う主な Python パッケージ:
+スクリプトが利用する主な Python パッケージ:
 
 - `torch`
 - `torchaudio`
@@ -171,7 +180,7 @@ OpenAI Whisper をベースにした、差し替え可能な字幕生成ツー�
 - `lingua-language-detector`
 - `tqdm`
 
-動作確認コマンド:
+確認用コマンド:
 
 ```bash
 python --version
@@ -180,41 +189,41 @@ ffmpeg -version
 
 ---
 
-## 🔧 インストール
+## 🔧 Installation
 
-1. **リポジトリをクローン**
+1. **Clone this repo**
 
 ```bash
 git clone git@github.com:lachlanchen/whisper_with_lang_detect.git
 cd whisper_with_lang_detect
 ```
 
-2. **仮想環境を作成して有効化**
+2. **Create and activate a virtual environment**
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-3. **依存関係をインストール**
+3. **Install dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-`requirements.txt` がチェックアウト時点で無い場合は、代わりに主要実行依存を手動インストールします。
+チェックアウト時点で `requirements.txt` がない場合は、コア依存関係を手動でインストールしてください:
 
 ```bash
 pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 ```
 
-併せてシステムに FFmpeg がインストールされていることを確認してください。
+あわせて、システムレベルで FFmpeg がインストールされていることを確認してください。
 
 ---
 
-## ⚡ クイックスタート
+## ⚡ Quick Start
 
-最短でクローンから字幕作成まで進める場合:
+クローンから字幕生成までを最短で進める場合:
 
 ```bash
 python3 -m venv venv
@@ -223,17 +232,36 @@ pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 python vad_lang_subtitle.py -t path/to/video.mp4 --whisper-model small --force
 ```
 
-ヒント: 試行段階では `small` を使い、最終品質の生成では `large` に切り替えると効率的です。
+Tip: 反復作業中は `small` を使い、最終品質が必要な段階で `large` に切り替えてください。
 
-入力メディアの隣に生成される成果物:
+入力メディアと同じ場所に生成される成果物:
 
-- `*.wav` 抽出・正規化済み音声
-- `*.srt` プレイヤー/編集用字幕ファイル
-- `*.json` 構造化多言語字幕メタデータ
+- 正規化済み抽出音声 `*.wav`
+- プレイヤー/エディタ向け字幕ファイル `*.srt`
+- 多言語字幕メタデータを持つ構造化 `*.json`
 
 ---
 
-## 🛠 使い方
+## 🎚 Model Selection Guide
+
+速度と品質の要件に応じて Whisper モデルを選択します:
+
+| Model | Speed | Quality | Recommended Use |
+|---|---|---|---|
+| `tiny` / `base` | 最速 | 最低 | 高速スモークテストとパイプライン検証 |
+| `small` | 高速 | 良好 | 日常的な反復開発とローカル作業 |
+| `medium` | 中程度 | より高品質 | バランス重視の本番ワークフロー |
+| `large` (default) | 最低速 | 最高 | 最高品質が必要な最終字幕出力 |
+
+実運用での基本パターン:
+
+1. `small --force` で反復
+2. タイミングと言語タグを検証
+3. 納品用に `large --force` で再実行
+
+---
+
+## 🛠 Usage
 
 ```bash
 python vad_lang_subtitle.py \
@@ -242,46 +270,52 @@ python vad_lang_subtitle.py \
   [--force]
 ```
 
-### CLI オプション
+### CLI Options
 
-| フラグ | 別名 | 必須 | 説明 |
+| Flag | Alias | Required | Description |
 |---|---|---|---|
-| `--video-path` | `-t` | Yes | 入力メディアのパス（FFmpeg が対応する動画/音声） |
+| `--video-path` | `-t` | Yes | 入力メディアのパス（FFmpeg 対応の動画/音声） |
 | `--whisper-model` | — | No | Whisper モデル名（デフォルト: `large`） |
-| `--force` | — | No | 既存の `.wav`、`.srt`、`json` があっても再実行 |
+| `--force` | — | No | `.wav`、`.srt`、`.json` が既存でも再実行 |
 
-### 処理の挙動
+### Processing Behavior
 
-- 出力名は入力パスのベース名から決定されます。
-- `input.mp4` の場合、`input.wav`（正規化済み音声）、`input.srt`（タイムスタンプ付き字幕）、`input.json`（`start`/`end`/`lang`/`text`、必要に応じて語単位タイミングを含むメタデータ）が生成されます。
-- 既存の `.srt` または `.json` がある場合、`--force` を付けない限りスキップされます。
+- 出力ファイル名は入力ベースパスから決定されます。
+- `input.mp4` の場合、`input.wav`（正規化音声）、`input.srt`（タイムスタンプ付き字幕）、`input.json`（`start`, `end`, `lang`, `text` と必要に応じて単語タイミングを含むメタデータ）が生成されます。
+- 既存の `.srt` または `.json` がある場合、`--force` がないとスキップされます。
 
 ---
 
-## ⚙️ 設定
+## ⚙️ Configuration
 
-現在の設定は主に CLI 引数とコード内デフォルトに依存します。
+現在の設定は主に CLI 引数とコード内デフォルトで制御されています:
 
-| 設定項目 | 現在の挙動 |
+| Config Area | Current Behavior |
 |---|---|
-| Whisper model | `--whisper-model`（デフォルト: `large`） |
-| 処理サンプルレート | VAD/文字起こし処理のために `16000` 固定 |
-| FFmpeg 抽出 | `dynaudnorm=f=100` を使う `44100 Hz` / モノラル WAV |
-| Lingua detector | メイン処理では `ENGLISH`、`CHINESE`、`JAPANESE`、`ARABIC` を初期化 |
-| Whisper 側フィルタヘルパー既定値 | `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` を含む |
+| Whisper model | `--whisper-model` (default `large`) |
+| Processing sample rate | VAD/転写処理向けに `16000` をハードコード |
+| FFmpeg extraction | Mono WAV, `44100 Hz`, with `dynaudnorm=f=100` |
+| Lingua detector | メインフローでは `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` で初期化 |
+| Whisper-side filtering helper defaults | `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` を含む |
 
-補足: 補助フィルタの既定言語リストとメイン検出器設定は完全に一致しておらず、この README は現行実装の挙動をそのまま反映しています。
+前提に関する注記: ヘルパー既定値の言語リストとメイン検出器の初期化は完全には一致していません。本 README では実装されている現在の挙動をそのまま記載しています。
+
+現行スクリプトの追加実装詳細:
+
+- 実行時に `torch.set_num_threads(1)` が適用されます。
+- VAD モデルは `torch.hub.load(...)` を使って `snakers4/silero-vad` から読み込まれます。
+- 言語が `und`、またはテキストが空のセグメントはクリーン処理で除去されます。
 
 ---
 
-## 📦 出力フォーマット
+## 📦 Output Format
 
-入力メディアごとに2種類の字幕成果物を生成します。
+本ツールは入力メディアごとに 2 つの字幕成果物を出力します:
 
-- `*.srt`: `HH:MM:SS,mmm` タイムスタンプ形式の標準字幕テキスト
+- `*.srt`: `HH:MM:SS,mmm` タイムスタンプを持つ標準字幕テキスト
 - `*.json`: フォーマット済みタイムスタンプと言語タグを持つ構造化字幕リスト
 
-典型的な JSON セグメント形状:
+JSON セグメントの典型例:
 
 ```json
 {
@@ -302,13 +336,13 @@ python vad_lang_subtitle.py \
 
 補足:
 
-- `start` と `end` は JSON 出力内で SRT 形式文字列として保存されます。
-- `words` の有無はセグメント処理/リファイン段階によって異なります。
-- 不確実な言語区間では `lang` が `und` になる場合があります。
+- JSON 出力では `start`/`end` は SRT 形式の文字列としてシリアライズされます。
+- `words` はセグメントの処理/リファイン段階に応じて含まれる場合があります。
+- 言語が不確かな区間では `lang` が `und` になることがあります。
 
 ---
 
-## 🧪 実行例
+## 🧪 Examples
 
 MP4 に対して実行:
 
@@ -316,19 +350,19 @@ MP4 に対して実行:
 python vad_lang_subtitle.py -t data/9b7bfbfbe8ab1b9925cfdc34f2f9f7_2024_03_15_22_08_26_COMPLETED.MP4 --whisper-model large
 ```
 
-MOV で実行し、上書きする場合:
+MOV に対して強制上書き実行:
 
 ```bash
 python vad_lang_subtitle.py -t data/IMG_6276.MOV --whisper-model large --force
 ```
 
-FFmpeg 対応の音声のみ入力に対して実行:
+FFmpeg 対応の音声入力に対して実行:
 
 ```bash
 python vad_lang_subtitle.py -t "data/深圳动物园中心喷泉.m4a" --whisper-model medium
 ```
 
-一括実行例（bash）:
+バッチ処理のシェル例（bash）:
 
 ```bash
 for f in data/*.{MP4,MOV,m4a}; do
@@ -339,82 +373,94 @@ done
 
 ---
 
-## 🧭 開発ノート
+## 🧭 Development Notes
 
-- 現行の正規スクリプトは `vad_lang_subtitle.py` です。
-- 歴史的ファイル（`*.old`、`*.shorterlength*`、`archived/`）は参照用で、通常は正規版ではありません。
-- 現時点ではパッケージング構成（`pyproject.toml`、`setup.py`）や CI/テストスイートはコミットされていません。
-- `data/` には大きなサンプルメディアが含まれるため、実験時はリポジトリサイズとローカルディスク使用量に注意してください。
-- `clean_subtitles_dict()` はコード内に存在しますが、現行パイプラインでは呼び出されません。
-- `--force` は反復的な調整時に出力を確実に再生成する現在の手段です。
+- 正式なアクティブスクリプトは `vad_lang_subtitle.py` です。
+- 履歴ファイル（`*.old`, `*.shorterlength*`, `archived/`）は参照には有用ですが、非カノニカルとみなされます。
+- 現在、パッケージング用のひな形（`pyproject.toml`, `setup.py`）および CI/テストスイートはコミットされていません。
+- `data/` には大きなサンプルメディア成果物が含まれるため、実験時はリポジトリサイズとローカルディスク容量に注意してください。
+- `clean_subtitles_dict()` はコード内に存在しますが、現在メインパイプラインからは呼び出されていません。
+- 反復調整時に出力再生成を確実に行う現在の手段は `--force` です。
 
-推奨ローカル開発フロー:
+推奨ローカル開発ループ:
 
 ```bash
 python vad_lang_subtitle.py -t data/<your_media>.mp4 --whisper-model small --force
 ```
 
-反復時は小さいモデル（`tiny`/`base`/`small`）を使い、最終出力では `large` に切り替えて品質を上げることを推奨します。
+反復中は小さいモデル（`tiny`/`base`/`small`）を使い、最終出力品質が必要な段階で `large` へ切り替えてください。
 
 ---
 
-## 🩺 トラブルシューティング
+## 🩺 Troubleshooting
 
-| 症状 | 対処 |
+| Symptom | What to do |
 |---|---|
 | `ffmpeg: command not found` | FFmpeg をインストールし、`ffmpeg -version` で確認してください。 |
-| 初回実行が極端に遅い／停止したように見える | 初回ダウンロード（Whisper + Silero）に時間がかかるため。再実行時は短くなります。 |
-| CUDA / GPU エラー | 小さい Whisper モデル（`small`/`base`/`tiny`）で CPU フォールバックを試し、環境に適した PyTorch ビルドを使用してください。 |
-| 出力ファイルが更新されない | `--force` を使って既存の派生ファイルを上書きしてください。 |
-| `pip install -r requirements.txt` がファイルなしで失敗する | インストール手順の手動コマンドを使用してください。 |
-| 短い区間で言語タグが不正確 | 極端に短い/ノイズが多い区間では起こり得ます。Whisper と Lingua を組み合わせた現行ロジックでもエッジケースがあります。 |
-| 字幕出力が空、またはほぼ空 | 入力に音声があることを確認し、抽出された `.wav` を確認してから、FFmpeg 抽出検証後に `--force` を付けて再実行してください。 |
-| 隣接行で予期せず言語が切り替わる | 非常に短いセグメントで起きることがあります。下流処理で言語ごとおよび最小持続時間での再統合を検討してください。 |
+| First run is very slow or appears stuck | 初回はモデルダウンロード（Whisper + Silero）に時間がかかることがあります。再実行は速くなります。 |
+| CUDA / GPU errors | `small`/`base`/`tiny` など小さい Whisper モデルで CPU フォールバックを試し、環境に合った PyTorch ビルドを確認してください。 |
+| Output files are not regenerated | 既存の派生ファイルを上書きするには `--force` を使用してください。 |
+| `pip install -r requirements.txt` fails because file not found | Installation セクションに記載の手動インストールコマンドを使用してください。 |
+| Inaccurate language tagging on short segments | 非常に短い/ノイズの多い区間で発生することがあります。現在は Whisper と Lingua を併用していますが、依然としてエッジケースがあります。 |
+| Empty or near-empty subtitle output | 入力に音声が含まれているか確認し、抽出された `.wav` を点検した上で `--force` で再試行してください。 |
+| Unexpected language flips between neighboring lines | 非常に短いセグメントで起こり得ます。下流ツール側で言語と最小長に基づくポストマージを検討してください。 |
+| FFmpeg extraction fails on damaged media | スクリプトはコンテナ修復（`-c copy -movflags +faststart`）後に再試行しますが、破損が重いファイルでは失敗する場合があります。 |
+
+簡易診断:
+
+```bash
+python --version
+ffmpeg -version
+python -c "import torch, whisper, torchaudio, tqdm; print('python deps ok')"
+```
 
 ---
 
-## ⚠️ 既知の制約と前提
+## ⚠️ Known Limitations and Assumptions
 
-- 依存ファイル一覧はコミットされていません（`requirements.txt`、`pyproject.toml`、`setup.py` がリポジトリルートに存在しません）。
-- ライセンスは README 上で MIT と明記されていますが、現時点で単独の `LICENSE` ファイルはありません。
-- Lingua はメインフローで `EN/ZH/JA/AR` のみ初期化されますが、ヘルパー既定値には追加の候補コードが含まれます。
-- 自動テストやベンチマークは現在コミットされておらず、検証は主に手動です。
-- ルートと `archived/` には履歴スクリプトが残っているため、実験時以外は `vad_lang_subtitle.py` のみをアクティブ版として扱ってください。
+- 依存関係マニフェストは未コミットです（作成時点で `requirements.txt`, `pyproject.toml`, `setup.py` はリポジトリルートにありません）。
+- README では MIT ライセンスと明記されていますが、単独の `LICENSE` ファイルは現時点で存在しません。
+- メインフローの Lingua 初期化は `EN/ZH/JA/AR` 明示指定ですが、ヘルパー既定値にはより多くの候補コードが含まれます。
+- 自動テスト/ベンチマークは現状コミットされておらず、検証は主に手動です。
+- ルートと `archived/` に履歴スクリプトが存在します。意図的に実験する場合を除き、アクティブ扱いは `vad_lang_subtitle.py` のみです。
+- 現行実装では詳細なランタイムログとセグメント単位デバッグ出力を表示します。これは想定動作です。
 
 ---
 
-## 🗺 ロードマップ
+## 🗺 Roadmap
 
-- `requirements.txt` または `pyproject.toml` を固定バージョン付きで追加・維持
-- セグメント分割とタイムスタンプクリーニングロジック向けの自動テスト追加
-- 多言語の境界ケースに対するベンチマークと品質評価ドキュメント追加
-- コードデフォルト依存を排した設定ファイルサポートの追加
-- `i18n/` の README 多言語セット拡充と言語リンクバーの同期維持
+- 固定バージョンの `requirements.txt` または `pyproject.toml` を追加・保守
+- セグメンテーションおよびタイムスタンプクリーンアップロジックの自動テストを追加
+- 多言語エッジケース向けのベンチマーク/品質評価ドキュメントを追加
+- コード内デフォルト依存ではなく任意の設定ファイル対応を追加
+- `i18n/` の README 言語セットを拡充し、言語バーの同期を維持
 - 検出器設定とヘルパー既定値の言語選択挙動を明確化・統一
-- README の宣言と一致する正式な `LICENSE` ファイル追加
+- README の宣言に合わせた正式な `LICENSE` ファイルを追加
 
 ---
 
-## 🔗 謝辞
+## 🔗 Acknowledgments
 
-- [OpenAI Whisper](https://github.com/openai/whisper)（音声文字起こし）
-- [Snakers4/Silero-VAD](https://github.com/snakers4/silero-models)（堅牢な音声活動検知）
-- [Lingua](https://github.com/pemistahl/lingua-java)（高精度な言語識別）
+- [OpenAI Whisper](https://github.com/openai/whisper) for speech-to-text
+- [Snakers4/Silero-VAD](https://github.com/snakers4/silero-models) for robust voice activity detection
+- [Lingua](https://github.com/pemistahl/lingua-java) for high-accuracy language identification
 
 ---
 
-## 🤝 コントリビュート
+## 🤝 Contributing
 
-1. Fork してクローン
-2. ブランチ作成: `git checkout -b feat/your-idea`
-3. コミットして push
-4. PR を作成
+1. Fork and clone
+2. Create a branch: `git checkout -b feat/your-idea`
+3. Commit and push
+4. Open a PR
 
-大幅な変更の場合:
+大きな変更の場合は、以下を含めてください:
 
-- 期待する挙動変更の簡潔な説明
-- 再現可能な実行コマンド例
-- 必要であれば変更前後の字幕スニペット
+- 期待される挙動変更の短い説明
+- 再現可能なコマンド例
+- 必要に応じて字幕の before/after スニペット
+
+---
 
 ## ❤️ Support
 
@@ -424,8 +470,10 @@ python vad_lang_subtitle.py -t data/<your_media>.mp4 --whisper-model small --for
 
 ## 📫 Contact
 
-- バグ報告、使用方法の質問、機能要望は issue を作成してください。
-- スポンサーと寄付については、上記のサポート手段をご利用ください。
+- バグ報告、利用方法の質問、機能要望は Issue を作成してください。
+- スポンサーや寄付に関する問い合わせは上記サポート手段を利用してください。
+
+---
 
 ## 📄 License
 

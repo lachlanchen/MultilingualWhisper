@@ -1,14 +1,13 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
-
 [![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
 
 # MultilingualWhisper
 
-Một công cụ tạo phụ đề kiểu gắn trực tiếp, xây dựng trên OpenAI Whisper, mở rộng thêm khả năng phát hiện và tinh chỉnh ngôn ngữ chi tiết theo từng đoạn cho các video có nhiều ngôn ngữ.
+Trình tạo phụ đề dùng ngay, xây trên OpenAI Whisper, được mở rộng với khả năng phát hiện và tinh chỉnh ngôn ngữ chính xác theo từng đoạn cho video chứa nhiều ngôn ngữ.
 
-> Tạo phụ đề đa ngôn ngữ sạch hơn từ dữ liệu âm/video thực tế có nội dung hỗn hợp ngôn ngữ với phân đoạn theo ngôn ngữ.
+> Tạo phụ đề đa ngôn ngữ sạch hơn từ media thực tế có ngôn ngữ pha trộn, với phân đoạn nhận biết ngôn ngữ.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Whisper](https://img.shields.io/badge/STT-OpenAI%20Whisper-111111)
@@ -20,26 +19,36 @@ Một công cụ tạo phụ đề kiểu gắn trực tiếp, xây dựng trên
 ![Output](https://img.shields.io/badge/Output-SRT%20%7C%20JSON-0A7F5A)
 ![Workflow](https://img.shields.io/badge/Flow-Silero%20%3E%20Whisper%20%3E%20Lingua-4D6D9A)
 ![Refinement](https://img.shields.io/badge/Refinement-Text%20%2B%20Timestamps-0EA5E9)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-6B7280)
+![Maintained](https://img.shields.io/badge/Maintained-Yes-16A34A)
 
-| Mục tiêu | Giá trị |
+> 🌍 **Tài liệu đa ngôn ngữ đã có**: English + 10 biến thể README đã dịch trong [`i18n/`](i18n/), được liên kết ở thanh ngôn ngữ phía trên.
+
+### Ngôn ngữ tài liệu
+
+| Locale | File |
 | --- | --- |
-| Đầu vào | Âm thanh/video tương thích FFmpeg |
-| Quy trình | VAD segmentation → Whisper transcription → Lingua refinement |
-| Đầu ra | `*.wav`, `*.srt`, và `*.json` đã chuẩn hóa |
-| Trường hợp phù hợp | Phụ đề đa ngôn ngữ có nhãn ngôn ngữ theo từng đoạn |
+
+| Trọng tâm | Giá trị |
+| --- | --- |
+| Input | Âm thanh/video tương thích FFmpeg |
+| Pipeline | VAD segmentation -> Whisper transcription -> Lingua refinement |
+| Output | `*.wav`, `*.srt`, và `*.json` đã chuẩn hóa |
+| Trường hợp phù hợp nhất | Phụ đề đa ngôn ngữ với nhãn ngôn ngữ theo từng đoạn |
 
 ---
 
-## Mục lục
+## Table of Contents
 
 - [Tổng quan](#-tổng-quan)
-- [Nhìn tổng quát](#nhìn-tổng-quát)
+- [Nhìn nhanh](#nhìn-nhanh)
 - [Tính năng chính](#-tính-năng-chính)
 - [Luồng pipeline](#-luồng-pipeline)
 - [Cấu trúc dự án](#-cấu-trúc-dự-án)
 - [Điều kiện tiên quyết](#-điều-kiện-tiên-quyết)
 - [Cài đặt](#-cài-đặt)
 - [Bắt đầu nhanh](#-bắt-đầu-nhanh)
+- [Hướng dẫn chọn model](#-hướng-dẫn-chọn-model)
 - [Cách dùng](#-cách-dùng)
 - [Cấu hình](#-cấu-hình)
 - [Định dạng đầu ra](#-định-dạng-đầu-ra)
@@ -48,21 +57,21 @@ Một công cụ tạo phụ đề kiểu gắn trực tiếp, xây dựng trên
 - [Khắc phục sự cố](#-khắc-phục-sự-cố)
 - [Hạn chế và giả định đã biết](#-hạn-chế-và-giả-định-đã-biết)
 - [Lộ trình](#-lộ-trình)
-- [Hỗ trợ](#-hỗ-trợ)
-- [Liên hệ](#-liên-hệ)
 - [Lời cảm ơn](#-lời-cảm-ơn)
 - [Đóng góp](#-đóng-góp)
+- [Support](#-support)
+- [Liên hệ](#-liên-hệ)
 - [Giấy phép](#-giấy-phép)
 
 ---
 
 ## ✨ Tổng quan
 
-`MultilingualWhisper` là pipeline CLI Python tập trung tại [`vad_lang_subtitle.py`](vad_lang_subtitle.py). Nó kết hợp:
+`MultilingualWhisper` là một pipeline CLI Python xoay quanh [`vad_lang_subtitle.py`](vad_lang_subtitle.py). Nó kết hợp:
 
 - Silero VAD để phân đoạn tiếng nói
 - OpenAI Whisper để phiên âm và dự đoán ngôn ngữ ban đầu
-- Lingua để tinh chỉnh ngôn ngữ từ văn bản
+- Lingua để tinh chỉnh ngôn ngữ dựa trên văn bản
 - FFmpeg để trích xuất, chuẩn hóa và xử lý media
 
 Đầu ra chính là các tệp phụ đề `.srt` và `.json`, cùng tệp âm thanh `.wav` đã trích xuất và chuẩn hóa.
@@ -72,29 +81,29 @@ Một công cụ tạo phụ đề kiểu gắn trực tiếp, xây dựng trên
 | Mục | Chi tiết |
 |---|---|
 | Điểm vào chính | `vad_lang_subtitle.py` |
-| Đầu vào | Video/audio được FFmpeg hỗ trợ |
-| Đầu ra | `*.wav`, `*.srt`, `*.json` |
-| Luồng cốt lõi | VAD -> Whisper -> Lingua -> tinh chỉnh |
+| Input | Video/audio được FFmpeg hỗ trợ |
+| Output | `*.wav`, `*.srt`, `*.json` |
+| Luồng cốt lõi | VAD -> Whisper -> Lingua -> refinement |
 | Trường hợp dùng điển hình | Tạo phụ đề đa ngôn ngữ |
 
 ---
 
 ## 🚀 Tính năng chính
 
-- **Pipeline Silero VAD -> Whisper**
-  Voice Activity Detection (VAD) chia âm thanh thành các đoạn có tiếng nói, sau đó Whisper phiên âm từng đoạn.
+- **Pipeline Silero VAD -> Whisper**  
+  Voice Activity Detection (VAD) tách âm thanh thành các đoạn có tiếng nói, sau đó Whisper phiên âm từng đoạn.
 
-- **Phát hiện ngôn ngữ chi tiết**
-  Sử dụng [Lingua](https://github.com/pemistahl/lingua-java) cùng detector của Whisper để gắn nhãn cho mọi đoạn (kể cả từng từ) bằng mã ngôn ngữ ISO (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...).
+- **Phát hiện ngôn ngữ chi tiết**  
+  Dùng [Lingua](https://github.com/pemistahl/lingua-java) cùng bộ phát hiện của Whisper để gắn nhãn mọi đoạn (kể cả từng từ) bằng mã ngôn ngữ ISO (`en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr`, ...).
 
-- **Tinh chỉnh phân đoạn thông minh**
-  Dọn timestamp để tránh khoảng trống hoặc chồng chéo. Phân tách dấu câu cắt các đoạn phiên âm dài tại dấu phẩy, chấm, dấu hỏi, v.v. VAD sẽ gộp lại và căn chỉnh từ vào các khối VAD để phụ đề mượt hơn. Tách theo độ dài áp dụng giới hạn riêng cho từng ngôn ngữ.
+- **Tinh chỉnh đoạn thông minh**  
+  Dọn timestamp để tránh hổng hoặc chồng lấn. Tách theo dấu câu để chia bản phiên âm dài tại dấu phẩy, dấu chấm, dấu hỏi, v.v. VAD merge căn lại các từ về block VAD để phụ đề mượt hơn. Phân đoạn theo độ dài áp dụng giới hạn riêng theo ngôn ngữ.
 
-- **Phụ đề đa ngôn ngữ**
-  Xuất cả `.srt` và `.json`, giữ nhãn ngôn ngữ theo từng đoạn để bạn có thể tùy chỉnh kiểu dáng hoặc lọc theo ngôn ngữ ở trình phát hoặc trình chỉnh sửa phía sau.
+- **Phụ đề đa ngôn ngữ**  
+  Xuất cả `.srt` và `.json`, giữ nhãn ngôn ngữ theo từng đoạn để bạn có thể style hoặc lọc theo ngôn ngữ trong player/editor downstream.
 
-- **Xử lý media ổn định**
-  Tự động trích xuất và chuẩn hóa âm thanh qua FFmpeg, cố gắng sửa các container lỗi, và áp dụng chuẩn hóa động (`dynaudnorm`) để bản phiên âm rõ ràng hơn.
+- **Xử lý media ổn định**  
+  Tự động trích xuất và chuẩn hóa audio qua FFmpeg, thử sửa container lỗi, và áp dụng chuẩn hóa động (`dynaudnorm`) để bản phiên âm rõ hơn.
 
 ---
 
@@ -113,13 +122,13 @@ Input media
 
 Đường chạy chính trong `vad_lang_subtitle.py`:
 
-1. Phân tích tham số CLI (`--video-path`, `--whisper-model`, `--force`).
-2. Xác định đường dẫn đầu ra từ basename đầu vào.
+1. Parse đối số CLI (`--video-path`, `--whisper-model`, `--force`).
+2. Suy ra đường dẫn đầu ra từ basename đầu vào.
 3. Trích xuất/chuẩn hóa âm thanh qua FFmpeg.
-4. Tải Silero VAD (`torch.hub`) và mô hình Whisper.
-5. Phiên âm lần đầu trên từng đoạn VAD.
-6. Gộp/tinh chỉnh đoạn, rồi phiên âm lần hai trên các đoạn đã gộp.
-7. Áp dụng giảm độ dài phụ đề và làm sạch timestamp.
+4. Tải Silero VAD (`torch.hub`) và model Whisper.
+5. Phiên âm lượt đầu trên các chunk VAD.
+6. Gộp/tinh chỉnh segment, rồi phiên âm lượt hai trên các đoạn đã gộp.
+7. Áp dụng giảm độ dài phụ đề và dọn timestamp.
 8. Lưu `.srt` và `.json`.
 
 ---
@@ -130,14 +139,14 @@ Input media
 .
 ├── README.md
 ├── vad_lang_subtitle.py                # Main pipeline: VAD -> Whisper -> Lingua -> refine -> save
-├── vad_lang_subtitle.py.old            # Bản dựng mẫu cũ
-├── vad_lang_subtitle.py.20250706       # Snapshot lịch sử
-├── vad_lang_subtitle.py.shorterlength  # Biến thể lịch sử thay thế
-├── vad_lang_subtitle.py.shorterlength2 # Biến thể lịch sử thay thế
-├── vad_lang_subtitle.srt               # Ví dụ đầu ra
-├── vad_lang_subtitle.json              # Ví dụ JSON
+├── vad_lang_subtitle.py.old            # Legacy prototype
+├── vad_lang_subtitle.py.20250706       # Historical snapshot
+├── vad_lang_subtitle.py.shorterlength  # Alternative historical variant
+├── vad_lang_subtitle.py.shorterlength2 # Alternative historical variant
+├── vad_lang_subtitle.srt               # Example output
+├── vad_lang_subtitle.json              # Example JSON
 ├── .github/
-│   └── FUNDING.yml                     # Liên kết tài trợ
+│   └── FUNDING.yml                     # Sponsor links
 ├── archived/
 │   ├── vad.py
 │   ├── vad_lang.py
@@ -146,28 +155,28 @@ Input media
 │   ├── decode_audio_v2.py
 │   ├── text_language_detect.py
 │   └── trans_with_lang.py
-├── data/                               # Media mẫu + đầu ra sinh
-├── figs/                               # Tài nguyên nhận diện thương hiệu (banner/logo)
-├── i18n/                               # Các README đa ngôn ngữ hiện có
-└── .auto-readme-work/                  # Dữ liệu hỗ trợ tạo README
+├── data/                               # Optional sample media + generated outputs
+├── figs/                               # Branding assets (banner/logo)
+├── i18n/                               # Existing multilingual README files
+└── .auto-readme-work/                  # README generation workspace artifacts
 ```
 
-> ⚠️ Ghi chú: README tiếng Anh trước đó tham chiếu `requirements.txt`, nhưng hiện file này chưa có trong repo root.
+> ⚠️ Lưu ý: README trước đó từng tham chiếu `requirements.txt`, nhưng hiện file này chưa có ở thư mục gốc repository.
 
 ---
 
 ## ✅ Điều kiện tiên quyết
 
-- Python `3.10+` (đã kiểm tra trên môi trường Python 3.x hiện đại)
-- Có cài `ffmpeg` và có trong `PATH`
-- CPU/GPU + RAM đủ cho mô hình Whisper đã chọn (với `large`, GPU được khuyến nghị mạnh)
-- Có kết nối internet khi chạy lần đầu để tải trọng số Whisper và tài nguyên Silero VAD (`torch.hub`)
+- Python `3.10+` (đã kiểm tra trên môi trường 3.x hiện đại)
+- Đã cài `ffmpeg` và có trong `PATH`
+- CPU/GPU + RAM đủ cho model Whisper bạn chọn (với `large`, rất nên dùng GPU)
+- Có Internet ở lần chạy đầu để tải trọng số model Whisper và tài nguyên Silero VAD (`torch.hub`)
 
-Các gói Python được script dùng:
+Các package Python script đang dùng gồm:
 
 - `torch`
 - `torchaudio`
-- `whisper` (gói Python của OpenAI Whisper)
+- `whisper` (OpenAI Whisper Python package)
 - `lingua-language-detector`
 - `tqdm`
 
@@ -196,25 +205,25 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-3. **Cài đặt dependencies**
+3. **Cài dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Nếu `requirements.txt` vẫn chưa có trong checkout của bạn, cài trực tiếp các dependency runtime cốt lõi:
+Nếu checkout của bạn vẫn chưa có `requirements.txt`, hãy cài thủ công các dependency runtime cốt lõi:
 
 ```bash
 pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 ```
 
-Và đảm bảo FFmpeg đã được cài ở cấp hệ thống.
+Và bảo đảm FFmpeg đã được cài ở cấp hệ thống.
 
 ---
 
 ## ⚡ Bắt đầu nhanh
 
-Nếu bạn muốn đường đi nhanh nhất từ clone đến phụ đề:
+Nếu bạn muốn đường ngắn nhất từ clone đến phụ đề:
 
 ```bash
 python3 -m venv venv
@@ -223,13 +232,32 @@ pip install torch torchaudio openai-whisper lingua-language-detector tqdm
 python vad_lang_subtitle.py -t path/to/video.mp4 --whisper-model small --force
 ```
 
-Mẹo: dùng `small` khi đang thử nghiệm, sau đó chuyển sang `large` cho chất lượng cuối cùng.
+Mẹo: dùng `small` khi lặp thử nhanh, rồi chuyển sang `large` cho chất lượng cuối cùng.
 
-Kết quả dự kiến nằm cạnh media đầu vào:
+Các artifact dự kiến cạnh media đầu vào:
 
-- `*.wav` âm thanh đã trích xuất và chuẩn hóa
-- `*.srt` tệp phụ đề cho trình phát/trình chỉnh sửa
+- `*.wav` audio đã trích xuất và chuẩn hóa
+- `*.srt` tệp phụ đề cho player/editor
 - `*.json` metadata phụ đề đa ngôn ngữ có cấu trúc
+
+---
+
+## 🎚 Hướng dẫn chọn model
+
+Chọn model Whisper dựa trên mục tiêu tốc độ so với chất lượng:
+
+| Model | Speed | Quality | Recommended Use |
+|---|---|---|---|
+| `tiny` / `base` | Fastest | Lowest | Fast smoke tests and pipeline validation |
+| `small` | Fast | Good | Daily iteration and local development |
+| `medium` | Medium | Better | Balanced production workflows |
+| `large` (default) | Slowest | Best | Final subtitle exports for highest quality |
+
+Mẫu triển khai thực tế:
+
+1. Lặp với `small --force`
+2. Xác thực timing và nhãn ngôn ngữ
+3. Chạy lại với `large --force` để xuất bản giao cuối
 
 ---
 
@@ -244,44 +272,50 @@ python vad_lang_subtitle.py \
 
 ### Tùy chọn CLI
 
-| Tham số | Bí danh | Bắt buộc | Mô tả |
+| Flag | Alias | Required | Description |
 |---|---|---|---|
-| `--video-path` | `-t` | Có | Đường dẫn media đầu vào (video/audio được FFmpeg hỗ trợ) |
-| `--whisper-model` | — | Không | Tên mô hình Whisper (mặc định: `large`) |
-| `--force` | — | Không | Chạy lại dù đã có `.wav`, `.srt`, hoặc `.json` |
+| `--video-path` | `-t` | Yes | Input media path (video/audio supported by FFmpeg) |
+| `--whisper-model` | — | No | Whisper model name (default: `large`) |
+| `--force` | — | No | Re-run even if `.wav`, `.srt`, or `.json` already exist |
 
 ### Hành vi xử lý
 
-- Tên đầu ra được suy ra từ đường dẫn cơ sở của input.
-- Với `input.mp4`, output là `input.wav` (âm thanh đã chuẩn hóa), `input.srt` (phụ đề có timestamp), và `input.json` (metadata bao gồm `start`, `end`, `lang`, `text`, và tùy chọn word timings).
-- Các file `.srt` hoặc `.json` đã có sẽ bị bỏ qua trừ khi bật `--force`.
+- Tên output được suy ra từ base path của input.
+- Với `input.mp4`, output là `input.wav` (audio đã chuẩn hóa), `input.srt` (phụ đề có timestamp), và `input.json` (metadata gồm `start`, `end`, `lang`, `text`, và tùy chọn thời gian theo từ).
+- Nếu `.srt` hoặc `.json` đã tồn tại thì sẽ skip trừ khi bật `--force`.
 
 ---
 
 ## ⚙️ Cấu hình
 
-Cấu hình hiện tại chủ yếu được điều khiển qua CLI và mặc định trong code:
+Cấu hình hiện tại chủ yếu theo CLI và mặc định trong code:
 
-| Khu vực cấu hình | Hành vi hiện tại |
+| Config Area | Current Behavior |
 |---|---|
-| Mô hình Whisper | `--whisper-model` (mặc định `large`) |
-| Tần số mẫu xử lý | Cố định `16000` cho xử lý VAD/phiên âm |
-| Trích xuất FFmpeg | WAV mono, `44100 Hz`, với `dynaudnorm=f=100` |
-| Bộ phát hiện Lingua | Khởi tạo cho `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` trong luồng chính |
-| Mặc định lọc bên phía Whisper | Bao gồm `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
+| Whisper model | `--whisper-model` (default `large`) |
+| Processing sample rate | Hard-coded to `16000` for VAD/transcription processing |
+| FFmpeg extraction | Mono WAV, `44100 Hz`, with `dynaudnorm=f=100` |
+| Lingua detector | Initialized for `ENGLISH`, `CHINESE`, `JAPANESE`, `ARABIC` in main flow |
+| Whisper-side filtering helper defaults | Includes `en`, `zh`, `ja`, `ar`, `yue`, `ko`, `vi`, `es`, `fr` |
 
-Ghi chú giả định: danh sách ngôn ngữ trong mặc định helper và thiết lập detector chính chưa hoàn toàn trùng khớp; README này giữ đúng hành vi hiện tại.
+Ghi chú giả định: danh sách ngôn ngữ ở helper defaults và cấu hình detector chính chưa hoàn toàn giống nhau; README này giữ đúng hành vi hiện đang được triển khai.
+
+Chi tiết triển khai bổ sung từ script hiện tại:
+
+- `torch.set_num_threads(1)` được áp dụng khi runtime.
+- Model VAD được tải từ `snakers4/silero-vad` qua `torch.hub.load(...)`.
+- Segment cleaning loại các mục có ngôn ngữ `und` hoặc văn bản rỗng.
 
 ---
 
 ## 📦 Định dạng đầu ra
 
-Công cụ tạo hai tệp phụ đề cho mỗi media đầu vào:
+Công cụ ghi hai artifact phụ đề cho mỗi media đầu vào:
 
 - `*.srt`: Văn bản phụ đề chuẩn với timestamp `HH:MM:SS,mmm`.
-- `*.json`: Danh sách phụ đề có cấu trúc chứa timestamp đã định dạng và nhãn ngôn ngữ.
+- `*.json`: Danh sách phụ đề có cấu trúc, chứa timestamp đã định dạng và nhãn ngôn ngữ.
 
-Dạng JSON điển hình:
+Dạng JSON segment điển hình:
 
 ```json
 {
@@ -302,27 +336,27 @@ Dạng JSON điển hình:
 
 Ghi chú:
 
-- `start`/`end` được serialize dưới dạng chuỗi kiểu SRT trong JSON.
-- `words` có thể xuất hiện tùy vào giai đoạn xử lý/tinh chỉnh của segment.
-- Giá trị `lang` là `und` có thể xuất hiện cho đoạn không chắc chắn về ngôn ngữ.
+- `start`/`end` được serialize thành chuỗi kiểu SRT trong output JSON.
+- `words` có thể xuất hiện tùy theo giai đoạn xử lý/tinh chỉnh segment.
+- Giá trị `lang` là `und` có thể xuất hiện ở các đoạn chưa chắc ngôn ngữ.
 
 ---
 
 ## 🧪 Ví dụ
 
-Chạy trên một file MP4:
+Chạy với MP4:
 
 ```bash
 python vad_lang_subtitle.py -t data/9b7bfbfbe8ab1b9925cfdc34f2f9f7_2024_03_15_22_08_26_COMPLETED.MP4 --whisper-model large
 ```
 
-Chạy trên file MOV và ép ghi đè:
+Chạy với MOV và ép ghi đè:
 
 ```bash
 python vad_lang_subtitle.py -t data/IMG_6276.MOV --whisper-model large --force
 ```
 
-Chạy trên input chỉ âm thanh được FFmpeg hỗ trợ:
+Chạy với input chỉ audio được FFmpeg hỗ trợ:
 
 ```bash
 python vad_lang_subtitle.py -t "data/深圳动物园中心喷泉.m4a" --whisper-model medium
@@ -341,64 +375,74 @@ done
 
 ## 🧭 Ghi chú phát triển
 
-- Script đang hoạt động chuẩn là `vad_lang_subtitle.py`.
-- Các file lịch sử (`*.old`, `*.shorterlength*`, `archived/`) hữu ích để tham khảo nhưng hiện không phải bản chính.
-- Hiện chưa có scaffold dự án đóng gói (`pyproject.toml`, `setup.py`) và chưa có CI/test suite.
-- `data/` chứa media mẫu lớn; chú ý đến dung lượng repo và dung lượng đĩa cục bộ khi chạy thử.
-- `clean_subtitles_dict()` tồn tại trong code nhưng hiện chưa được gọi trong pipeline chính.
-- `--force` hiện là cơ chế để buộc sinh lại output cho mỗi lần tuning.
+- Script chính thức đang hoạt động là `vad_lang_subtitle.py`.
+- Các file lịch sử (`*.old`, `*.shorterlength*`, `archived/`) hữu ích để tham khảo nhưng có vẻ không phải bản chuẩn.
+- Hiện chưa có scaffold đóng gói dự án (`pyproject.toml`, `setup.py`) và chưa có CI/test suite được commit.
+- `data/` chứa media mẫu dung lượng lớn; cần lưu ý kích thước repo và dung lượng đĩa local khi thử nghiệm.
+- `clean_subtitles_dict()` có trong code nhưng hiện chưa được gọi ở pipeline chính.
+- `--force` hiện là cơ chế để đảm bảo tái sinh output khi lặp tuning.
 
-Gợi ý luồng dev local:
+Vòng lặp dev local được gợi ý:
 
 ```bash
 python vad_lang_subtitle.py -t data/<your_media>.mp4 --whisper-model small --force
 ```
 
-Dùng mô hình nhỏ hơn (`tiny`/`base`/`small`) khi đang thử nghiệm, rồi chuyển sang `large` cho chất lượng cuối.
+Dùng model nhỏ hơn (`tiny`/`base`/`small`) trong lúc lặp, rồi chuyển sang `large` cho chất lượng đầu ra cuối.
 
 ---
 
 ## 🩺 Khắc phục sự cố
 
-| Triệu chứng | Cần làm gì |
+| Symptom | What to do |
 |---|---|
-| `ffmpeg: command not found` | Cài FFmpeg và kiểm tra lại bằng `ffmpeg -version`. |
-| Chạy lần đầu rất chậm hoặc có vẻ bị treo | Việc tải ban đầu của model (Whisper + Silero) có thể mất thời gian; lần chạy lại sẽ nhanh hơn. |
-| Lỗi CUDA / GPU | Thử fallback CPU bằng mô hình Whisper nhỏ hơn (`small`, `base`, `tiny`) và đảm bảo build PyTorch phù hợp với môi trường của bạn. |
-| Tệp đầu ra không được tái sinh | Dùng `--force` để ghi đè các tệp đã có. |
-| `pip install -r requirements.txt` lỗi vì không tìm thấy file | Dùng lệnh cài dependencies thủ công như đã nêu trong phần Cài đặt. |
-| Gắn nhãn ngôn ngữ không chính xác trên đoạn ngắn | Trường hợp này có thể xảy ra với các đoạn rất ngắn hoặc nhiễu; logic hiện tại kết hợp Whisper và Lingua nhưng vẫn có trường hợp biên. |
-| Kết quả phụ đề rỗng hoặc gần rỗng | Kiểm tra input có tiếng nói chưa, kiểm tra `.wav` đã trích xuất, rồi chạy lại với `--force` sau khi xác thực bước FFmpeg. |
-| Ngôn ngữ đổi đột ngột giữa hai dòng kế tiếp | Có thể xảy ra với đoạn rất ngắn; cân nhắc gộp lại trong công cụ downstream theo ngôn ngữ và thời lượng tối thiểu. |
+| `ffmpeg: command not found` | Cài FFmpeg và kiểm tra bằng `ffmpeg -version`. |
+| First run is very slow or appears stuck | Lần đầu tải model (Whisper + Silero) có thể mất thời gian; các lần chạy sau sẽ nhanh hơn. |
+| CUDA / GPU errors | Thử fallback CPU bằng model Whisper nhỏ hơn (`small`, `base`, `tiny`) và bảo đảm build PyTorch phù hợp môi trường. |
+| Output files are not regenerated | Dùng `--force` để ghi đè các file đầu ra đã có. |
+| `pip install -r requirements.txt` fails because file not found | Dùng lệnh cài dependency thủ công trong phần Installation. |
+| Inaccurate language tagging on short segments | Có thể xảy ra ở đoạn cực ngắn/nhiễu; logic hiện kết hợp Whisper và Lingua nhưng vẫn có edge case. |
+| Empty or near-empty subtitle output | Xác nhận input có tiếng nói, kiểm tra `.wav` đã trích xuất, rồi thử lại với `--force` sau khi xác thực bước FFmpeg. |
+| Unexpected language flips between neighboring lines | Có thể xảy ra ở đoạn rất ngắn; cân nhắc hậu xử lý bằng cách gộp theo ngôn ngữ và thời lượng tối thiểu ở tooling downstream. |
+| FFmpeg extraction fails on damaged media | Script sẽ thử lại sau bước sửa container (`-c copy -movflags +faststart`), nhưng file hỏng nặng vẫn có thể thất bại. |
+
+Chẩn đoán nhanh:
+
+```bash
+python --version
+ffmpeg -version
+python -c "import torch, whisper, torchaudio, tqdm; print('python deps ok')"
+```
 
 ---
 
 ## ⚠️ Hạn chế và giả định đã biết
 
-- Manifest dependency chưa được commit (`requirements.txt`, `pyproject.toml`, và `setup.py` đều vắng mặt tại repository root thời điểm viết).
-- License được khai báo trong README là MIT, nhưng file `LICENSE` độc lập hiện chưa có.
-- Lingua được khởi tạo rõ ràng với `EN/ZH/JA/AR` trong luồng chính, trong khi mặc định helper bao gồm nhiều mã ứng viên hơn.
-- Hiện chưa có test/benchmark tự động được commit, nên xác thực chủ yếu thủ công.
-- Script lịch sử có mặt ở root và `archived/`; chỉ `vad_lang_subtitle.py` được coi là bản đang dùng, trừ khi bạn đang thử nghiệm có chủ đích.
+- Manifest dependency chưa được commit (`requirements.txt`, `pyproject.toml`, và `setup.py` không có ở repo root tại thời điểm viết).
+- License được khai báo là MIT trong README, nhưng file `LICENSE` độc lập hiện chưa có.
+- Lingua được khởi tạo rõ ràng với `EN/ZH/JA/AR` trong luồng chính, trong khi helper defaults gồm nhiều mã ứng viên hơn.
+- Chưa có test/benchmark tự động được commit, nên việc xác thực hiện chủ yếu thủ công.
+- Có các script lịch sử ở root và `archived/`; chỉ `vad_lang_subtitle.py` nên được xem là bản chính trừ khi bạn cố ý thử nghiệm.
+- Script hiện in log runtime chi tiết và debug output theo từng segment; đây là hành vi dự kiến trong bản triển khai hiện tại.
 
 ---
 
 ## 🗺 Lộ trình
 
-- Thêm và duy trì `requirements.txt` hoặc `pyproject.toml` đã khóa phiên bản.
-- Thêm tests tự động cho logic phân đoạn và dọn timestamp.
-- Thêm tài liệu benchmark và đánh giá chất lượng cho các trường hợp đa ngôn ngữ biên.
-- Thêm hỗ trợ file cấu hình thay vì chỉ dùng mặc định trong code.
-- Mở rộng bộ README i18n trong `i18n/` và đồng bộ thanh ngôn ngữ.
-- Rõ ràng hóa và thống nhất hành vi chọn ngôn ngữ giữa cấu hình detector và defaults.
-- Thêm file `LICENSE` chính thức đúng theo thông báo trong README.
+- Thêm và duy trì `requirements.txt` hoặc `pyproject.toml` có khóa phiên bản.
+- Thêm test tự động cho logic phân đoạn và dọn timestamp.
+- Thêm tài liệu benchmark và đánh giá chất lượng cho các ca biên đa ngôn ngữ.
+- Thêm hỗ trợ file cấu hình thay vì chỉ dựa vào mặc định trong code.
+- Mở rộng bộ README i18n trong `i18n/` và giữ đồng bộ language bar.
+- Làm rõ và thống nhất hành vi chọn ngôn ngữ giữa cấu hình detector và helper defaults.
+- Thêm file `LICENSE` chính thức để khớp khai báo trong README.
 
 ---
 
 ## 🔗 Lời cảm ơn
 
-- [OpenAI Whisper](https://github.com/openai/whisper) cho chuyển thoại thành văn bản
-- [Snakers4/Silero-VAD](https://github.com/snakers4/silero-models) cho phát hiện hoạt động giọng nói đáng tin cậy
+- [OpenAI Whisper](https://github.com/openai/whisper) cho chuyển giọng nói thành văn bản
+- [Snakers4/Silero-VAD](https://github.com/snakers4/silero-models) cho phát hiện hoạt động giọng nói ổn định
 - [Lingua](https://github.com/pemistahl/lingua-java) cho nhận diện ngôn ngữ độ chính xác cao
 
 ---
@@ -410,18 +454,18 @@ Dùng mô hình nhỏ hơn (`tiny`/`base`/`small`) khi đang thử nghiệm, r�
 3. Commit và push
 4. Mở PR
 
-Với thay đổi lớn, hãy kèm:
+Với thay đổi lớn, hãy kèm theo:
 
-- Mô tả ngắn gọn về thay đổi hành vi dự kiến
-- Ví dụ lệnh tái tạo có thể thực hiện
-- Đoạn phụ đề trước/sau khi có liên quan
+- Mô tả ngắn về thay đổi hành vi kỳ vọng
+- Ví dụ lệnh có thể tái tạo
+- Trích đoạn phụ đề trước/sau khi phù hợp
 
 ---
 
 ## 📫 Liên hệ
 
-- Mở issue để báo lỗi, hỏi cách dùng, và gửi đề xuất tính năng.
-- Dùng các tùy chọn hỗ trợ ở trên cho tài trợ và các thắc mắc về donation.
+- Mở issue cho bug report, câu hỏi sử dụng, và đề xuất tính năng.
+- Dùng các tùy chọn hỗ trợ ở trên cho tài trợ và câu hỏi về donation.
 
 ---
 
