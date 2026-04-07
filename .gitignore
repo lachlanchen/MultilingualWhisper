@@ -2,3 +2,5 @@
 *.MOV
 *.MP4
 data/*
+__pycache__/
+*.pyc

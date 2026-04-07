@@ -21,6 +21,18 @@ from lingua import Language, LanguageDetectorBuilder
 import traceback
 
 
+def resolve_whisper_device():
+    requested = (os.getenv("LAZYEDIT_WHISPER_DEVICE") or "auto").strip().lower()
+    if requested not in ("", "auto"):
+        if requested.startswith("cuda") and not torch.cuda.is_available():
+            print(
+                f"Requested Whisper device '{requested}' but CUDA is unavailable. Falling back to CPU."
+            )
+            return "cpu"
+        return requested
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 
 def detect_language_with_lingua(text, detector):
     """
@@ -1320,7 +1332,15 @@ if __name__ == "__main__":
             # model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=True)
             (get_speech_timestamps, _, read_audio, *_) = utils
             # Load Whisper model for language detection and transcription
-            whisper_model = whisper.load_model(model_name)
+            whisper_device = resolve_whisper_device()
+            print(
+                f"Loading Whisper model '{model_name}' on {whisper_device} "
+                f"(CUDA_VISIBLE_DEVICES={os.getenv('CUDA_VISIBLE_DEVICES')}, "
+                f"cuda_available={torch.cuda.is_available()}, "
+                f"device_count={torch.cuda.device_count()})"
+            )
+            whisper_model = whisper.load_model(model_name, device=whisper_device)
+            print(f"Whisper model loaded on {whisper_model.device}")
 
             
 
