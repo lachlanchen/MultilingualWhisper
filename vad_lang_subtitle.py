@@ -33,6 +33,11 @@ def resolve_whisper_device():
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
+def uses_128_mels(model_name):
+    normalized = str(model_name or "").strip().lower()
+    return normalized.startswith("large-v3") or normalized == "turbo"
+
+
 
 def detect_language_with_lingua(text, detector):
     """
@@ -143,10 +148,10 @@ def predict_language_for_segment(audio_segment, allowed_languages=["en", "zh", "
 
     audio_segment = whisper.pad_or_trim(audio_segment)
 
-    if model in ["large-v2"]:
-        mel = whisper.log_mel_spectrogram(audio=audio_segment).to(whisper_model.device)
-    else:
+    if uses_128_mels(model):
         mel = whisper.log_mel_spectrogram(audio=audio_segment, n_mels=128).to(whisper_model.device)
+    else:
+        mel = whisper.log_mel_spectrogram(audio=audio_segment).to(whisper_model.device)
 
     # Detect the spoken language
     _, probs = whisper_model.detect_language(mel)
@@ -1386,8 +1391,7 @@ if __name__ == "__main__":
 
         except Exception as e:
             print("error: ", str(e))
-            traceback.print_exc()
-            final_subtitles = []
+            raise
 
         print("Final subtitles: ")
         for line in final_subtitles:
