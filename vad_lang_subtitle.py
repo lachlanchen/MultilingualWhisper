@@ -1,6 +1,7 @@
 import torch
 import whisper
 import torchaudio
+import soundfile as sf
 from io import BytesIO
 import tempfile
 import os
@@ -19,6 +20,106 @@ import tempfile
 from lingua import Language, LanguageDetectorBuilder
 
 import traceback
+
+WORD_TIMESTAMPS_ENABLED = True
+
+
+def resolve_whisper_device():
+    requested = (os.getenv("LAZYEDIT_WHISPER_DEVICE") or "auto").strip().lower()
+    if requested not in ("", "auto"):
+        if requested.startswith("cuda") and not torch.cuda.is_available():
+            print(
+                f"Requested Whisper device '{requested}' but CUDA is unavailable. Falling back to CPU."
+            )
+            return "cpu"
+        return requested
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def uses_128_mels(model_name):
+    normalized = str(model_name or "").strip().lower()
+    return normalized.startswith("large-v3") or normalized == "turbo"
+
+
+def read_audio_compat(path, sampling_rate=16000):
+    try:
+        wav, sr = torchaudio.load(path)
+    except (ImportError, ModuleNotFoundError) as exc:
+        print(
+            f"torchaudio.load() is unavailable ({exc}); "
+            "falling back to soundfile for audio decode."
+        )
+        wav_np, sr = sf.read(path, always_2d=True, dtype="float32")
+        wav = torch.from_numpy(wav_np).transpose(0, 1)
+
+    if wav.dim() == 1:
+        wav = wav.unsqueeze(0)
+
+    if wav.size(0) > 1:
+        wav = wav.mean(dim=0, keepdim=True)
+
+    if sr != sampling_rate:
+        resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=sampling_rate)
+        wav = resampler(wav)
+        sr = sampling_rate
+
+    if sr != sampling_rate:
+        raise RuntimeError(
+            f"Failed to normalize audio to {sampling_rate} Hz. Current sample rate: {sr}"
+        )
+
+    return wav.squeeze(0)
+
+
+def save_audio_compat(path, tensor, sampling_rate=16000):
+    data = tensor.detach().cpu()
+    if data.dim() == 1:
+        data = data.unsqueeze(0)
+
+    try:
+        torchaudio.save(path, data, sampling_rate)
+        return
+    except (ImportError, ModuleNotFoundError) as exc:
+        print(
+            f"torchaudio.save() is unavailable ({exc}); "
+            "falling back to soundfile for audio encode."
+        )
+
+    wav_np = data.transpose(0, 1).contiguous().numpy()
+    sf.write(path, wav_np, sampling_rate)
+
+
+def is_word_timestamps_runtime_error(exc):
+    message = str(exc)
+    return (
+        "median_filter_cuda" in message
+        or "JITCallable._set_src()" in message
+        or "find_alignment" in message
+        or "triton_ops.py" in message
+    )
+
+
+def normalize_whisper_segments(segments):
+    normalized_segments = []
+
+    for segment in segments or []:
+        segment_copy = dict(segment)
+        words = list(segment_copy.get("words") or [])
+        if not words:
+            text = (segment_copy.get("text") or "").strip()
+            if text:
+                words = [
+                    {
+                        "word": text,
+                        "start": float(segment_copy.get("start", 0.0)),
+                        "end": float(segment_copy.get("end", segment_copy.get("start", 0.0))),
+                        "probability": 1.0,
+                    }
+                ]
+        segment_copy["words"] = words
+        normalized_segments.append(segment_copy)
+
+    return normalized_segments
 
 
 
@@ -176,6 +277,7 @@ def predict_language_for_segment(audio_segment, allowed_languages=["en", "zh", "
 #     return transcription, segments, detected_language
 
 def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, detected_language):
+    global WORD_TIMESTAMPS_ENABLED
 
     print("start_frame: ", start_frame)
     print("end_frame: ", end_frame)
@@ -183,7 +285,7 @@ def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, det
 
     # Create a temporary file for the audio segment
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-    torchaudio.save(temp_file.name, audio_segment.unsqueeze(0), sampling_rate)
+    save_audio_compat(temp_file.name, audio_segment.unsqueeze(0), sampling_rate)
     temp_file.close()  # Close the file so Whisper can read it
     
     # Calculate and print the audio segment length in seconds
@@ -192,19 +294,38 @@ def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, det
     
     # Transcribe the audio segment using Whisper
     try:
-        result = whisper_model.transcribe(temp_file.name, language=detected_language, word_timestamps=True)
+        use_word_timestamps = WORD_TIMESTAMPS_ENABLED
+        result = whisper_model.transcribe(
+            temp_file.name,
+            language=detected_language,
+            word_timestamps=use_word_timestamps,
+        )
         transcription = result["text"]
-        segments = result["segments"]
-        # pprint(result)
+        segments = normalize_whisper_segments(result["segments"])
     except Exception as e:
-        print(f"Error transcribing segment: {e}")
-        traceback.print_exc()
-        transcription = ""
-        segments = []
-        raise  # Optionally re-raise the exception if you want to handle it further up the call stack
+        if use_word_timestamps and is_word_timestamps_runtime_error(e):
+            print(
+                "Whisper word timestamp alignment is incompatible with the current "
+                "Triton runtime; retrying this and subsequent segments without word_timestamps."
+            )
+            WORD_TIMESTAMPS_ENABLED = False
+            result = whisper_model.transcribe(
+                temp_file.name,
+                language=detected_language,
+                word_timestamps=False,
+            )
+            transcription = result["text"]
+            segments = normalize_whisper_segments(result["segments"])
+        else:
+            print(f"Error transcribing segment: {e}")
+            traceback.print_exc()
+            transcription = ""
+            segments = []
+            raise
+    finally:
+        if os.path.exists(temp_file.name):
+            os.remove(temp_file.name)
 
-    # Clean up the temporary file
-    os.remove(temp_file.name)
     return transcription, segments, detected_language
 
 # def update_segments_with_language(words_segments, parent_start_frame, sampling_rate, detector, detected_language=None):
@@ -1318,9 +1439,25 @@ if __name__ == "__main__":
             # Load the Silero VAD model
             model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=False)
             # model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=True)
-            (get_speech_timestamps, _, read_audio, *_) = utils
+            (get_speech_timestamps, _, silero_read_audio, *_) = utils
+            if hasattr(torchaudio, "list_audio_backends"):
+                read_audio_fn = silero_read_audio
+            else:
+                print(
+                    "torchaudio.list_audio_backends() is unavailable; "
+                    "using local compatibility read_audio implementation."
+                )
+                read_audio_fn = read_audio_compat
             # Load Whisper model for language detection and transcription
-            whisper_model = whisper.load_model(model_name)
+            whisper_device = resolve_whisper_device()
+            print(
+                f"Loading Whisper model '{model_name}' on {whisper_device} "
+                f"(CUDA_VISIBLE_DEVICES={os.getenv('CUDA_VISIBLE_DEVICES')}, "
+                f"cuda_available={torch.cuda.is_available()}, "
+                f"device_count={torch.cuda.device_count()})"
+            )
+            whisper_model = whisper.load_model(model_name, device=whisper_device)
+            print(f"Whisper model loaded on {whisper_model.device}")
 
             
 
@@ -1334,7 +1471,16 @@ if __name__ == "__main__":
             
 
             # Load your audio file
-            wav = read_audio(audio_path, sampling_rate=sampling_rate)
+            try:
+                wav = read_audio_fn(audio_path, sampling_rate=sampling_rate)
+            except AttributeError as exc:
+                if "list_audio_backends" not in str(exc):
+                    raise
+                print(
+                    "Silero read_audio hit a legacy torchaudio API path; "
+                    "retrying with local compatibility loader."
+                )
+                wav = read_audio_compat(audio_path, sampling_rate=sampling_rate)
 
             # Get speech timestamps from the audio file using Silero VAD
             speech_timestamps = get_speech_timestamps(wav, model, sampling_rate=sampling_rate)
@@ -1366,8 +1512,7 @@ if __name__ == "__main__":
 
         except Exception as e:
             print("error: ", str(e))
-            traceback.print_exc()
-            final_subtitles = []
+            raise
 
         print("Final subtitles: ")
         for line in final_subtitles:
