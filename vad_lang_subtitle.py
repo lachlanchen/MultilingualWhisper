@@ -1,6 +1,7 @@
 import torch
 import whisper
 import torchaudio
+import soundfile as sf
 from io import BytesIO
 import tempfile
 import os
@@ -36,6 +37,36 @@ def resolve_whisper_device():
 def uses_128_mels(model_name):
     normalized = str(model_name or "").strip().lower()
     return normalized.startswith("large-v3") or normalized == "turbo"
+
+
+def read_audio_compat(path, sampling_rate=16000):
+    try:
+        wav, sr = torchaudio.load(path)
+    except (ImportError, ModuleNotFoundError) as exc:
+        print(
+            f"torchaudio.load() is unavailable ({exc}); "
+            "falling back to soundfile for audio decode."
+        )
+        wav_np, sr = sf.read(path, always_2d=True, dtype="float32")
+        wav = torch.from_numpy(wav_np).transpose(0, 1)
+
+    if wav.dim() == 1:
+        wav = wav.unsqueeze(0)
+
+    if wav.size(0) > 1:
+        wav = wav.mean(dim=0, keepdim=True)
+
+    if sr != sampling_rate:
+        resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=sampling_rate)
+        wav = resampler(wav)
+        sr = sampling_rate
+
+    if sr != sampling_rate:
+        raise RuntimeError(
+            f"Failed to normalize audio to {sampling_rate} Hz. Current sample rate: {sr}"
+        )
+
+    return wav.squeeze(0)
 
 
 
@@ -1335,7 +1366,15 @@ if __name__ == "__main__":
             # Load the Silero VAD model
             model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=False)
             # model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=True)
-            (get_speech_timestamps, _, read_audio, *_) = utils
+            (get_speech_timestamps, _, silero_read_audio, *_) = utils
+            if hasattr(torchaudio, "list_audio_backends"):
+                read_audio_fn = silero_read_audio
+            else:
+                print(
+                    "torchaudio.list_audio_backends() is unavailable; "
+                    "using local compatibility read_audio implementation."
+                )
+                read_audio_fn = read_audio_compat
             # Load Whisper model for language detection and transcription
             whisper_device = resolve_whisper_device()
             print(
@@ -1359,7 +1398,16 @@ if __name__ == "__main__":
             
 
             # Load your audio file
-            wav = read_audio(audio_path, sampling_rate=sampling_rate)
+            try:
+                wav = read_audio_fn(audio_path, sampling_rate=sampling_rate)
+            except AttributeError as exc:
+                if "list_audio_backends" not in str(exc):
+                    raise
+                print(
+                    "Silero read_audio hit a legacy torchaudio API path; "
+                    "retrying with local compatibility loader."
+                )
+                wav = read_audio_compat(audio_path, sampling_rate=sampling_rate)
 
             # Get speech timestamps from the audio file using Silero VAD
             speech_timestamps = get_speech_timestamps(wav, model, sampling_rate=sampling_rate)
