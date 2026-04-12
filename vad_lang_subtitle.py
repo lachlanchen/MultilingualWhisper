@@ -232,10 +232,10 @@ def predict_language_for_segment(audio_segment, allowed_languages=["en", "zh", "
 
     audio_segment = whisper.pad_or_trim(audio_segment)
 
-    if model in ["large-v2"]:
-        mel = whisper.log_mel_spectrogram(audio=audio_segment).to(whisper_model.device)
-    else:
+    if uses_128_mels(model):
         mel = whisper.log_mel_spectrogram(audio=audio_segment, n_mels=128).to(whisper_model.device)
+    else:
+        mel = whisper.log_mel_spectrogram(audio=audio_segment).to(whisper_model.device)
 
     # Detect the spoken language
     _, probs = whisper_model.detect_language(mel)
@@ -321,7 +321,12 @@ def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, det
             traceback.print_exc()
             transcription = ""
             segments = []
-            raise
+            raise  # Optionally re-raise the exception if you want to handle it further up the call stack
+    except BaseException:
+        raise
+    else:
+        # pprint(result)
+        pass
     finally:
         if os.path.exists(temp_file.name):
             os.remove(temp_file.name)
