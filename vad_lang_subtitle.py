@@ -69,6 +69,24 @@ def read_audio_compat(path, sampling_rate=16000):
     return wav.squeeze(0)
 
 
+def save_audio_compat(path, tensor, sampling_rate=16000):
+    data = tensor.detach().cpu()
+    if data.dim() == 1:
+        data = data.unsqueeze(0)
+
+    try:
+        torchaudio.save(path, data, sampling_rate)
+        return
+    except (ImportError, ModuleNotFoundError) as exc:
+        print(
+            f"torchaudio.save() is unavailable ({exc}); "
+            "falling back to soundfile for audio encode."
+        )
+
+    wav_np = data.transpose(0, 1).contiguous().numpy()
+    sf.write(path, wav_np, sampling_rate)
+
+
 
 def detect_language_with_lingua(text, detector):
     """
@@ -231,7 +249,7 @@ def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, det
 
     # Create a temporary file for the audio segment
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-    torchaudio.save(temp_file.name, audio_segment.unsqueeze(0), sampling_rate)
+    save_audio_compat(temp_file.name, audio_segment.unsqueeze(0), sampling_rate)
     temp_file.close()  # Close the file so Whisper can read it
     
     # Calculate and print the audio segment length in seconds
