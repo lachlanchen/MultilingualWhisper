@@ -21,6 +21,8 @@ from lingua import Language, LanguageDetectorBuilder
 
 import traceback
 
+WORD_TIMESTAMPS_ENABLED = True
+
 
 def resolve_whisper_device():
     requested = (os.getenv("LAZYEDIT_WHISPER_DEVICE") or "auto").strip().lower()
@@ -85,6 +87,39 @@ def save_audio_compat(path, tensor, sampling_rate=16000):
 
     wav_np = data.transpose(0, 1).contiguous().numpy()
     sf.write(path, wav_np, sampling_rate)
+
+
+def is_word_timestamps_runtime_error(exc):
+    message = str(exc)
+    return (
+        "median_filter_cuda" in message
+        or "JITCallable._set_src()" in message
+        or "find_alignment" in message
+        or "triton_ops.py" in message
+    )
+
+
+def normalize_whisper_segments(segments):
+    normalized_segments = []
+
+    for segment in segments or []:
+        segment_copy = dict(segment)
+        words = list(segment_copy.get("words") or [])
+        if not words:
+            text = (segment_copy.get("text") or "").strip()
+            if text:
+                words = [
+                    {
+                        "word": text,
+                        "start": float(segment_copy.get("start", 0.0)),
+                        "end": float(segment_copy.get("end", segment_copy.get("start", 0.0))),
+                        "probability": 1.0,
+                    }
+                ]
+        segment_copy["words"] = words
+        normalized_segments.append(segment_copy)
+
+    return normalized_segments
 
 
 
@@ -242,6 +277,7 @@ def predict_language_for_segment(audio_segment, allowed_languages=["en", "zh", "
 #     return transcription, segments, detected_language
 
 def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, detected_language):
+    global WORD_TIMESTAMPS_ENABLED
 
     print("start_frame: ", start_frame)
     print("end_frame: ", end_frame)
@@ -258,19 +294,43 @@ def transcribe_segment(audio_segment, start_frame, end_frame, sampling_rate, det
     
     # Transcribe the audio segment using Whisper
     try:
-        result = whisper_model.transcribe(temp_file.name, language=detected_language, word_timestamps=True)
+        use_word_timestamps = WORD_TIMESTAMPS_ENABLED
+        result = whisper_model.transcribe(
+            temp_file.name,
+            language=detected_language,
+            word_timestamps=use_word_timestamps,
+        )
         transcription = result["text"]
-        segments = result["segments"]
-        # pprint(result)
+        segments = normalize_whisper_segments(result["segments"])
     except Exception as e:
-        print(f"Error transcribing segment: {e}")
-        traceback.print_exc()
-        transcription = ""
-        segments = []
-        raise  # Optionally re-raise the exception if you want to handle it further up the call stack
+        if use_word_timestamps and is_word_timestamps_runtime_error(e):
+            print(
+                "Whisper word timestamp alignment is incompatible with the current "
+                "Triton runtime; retrying this and subsequent segments without word_timestamps."
+            )
+            WORD_TIMESTAMPS_ENABLED = False
+            result = whisper_model.transcribe(
+                temp_file.name,
+                language=detected_language,
+                word_timestamps=False,
+            )
+            transcription = result["text"]
+            segments = normalize_whisper_segments(result["segments"])
+        else:
+            print(f"Error transcribing segment: {e}")
+            traceback.print_exc()
+            transcription = ""
+            segments = []
+            raise  # Optionally re-raise the exception if you want to handle it further up the call stack
+    except BaseException:
+        raise
+    else:
+        # pprint(result)
+        pass
+    finally:
+        if os.path.exists(temp_file.name):
+            os.remove(temp_file.name)
 
-    # Clean up the temporary file
-    os.remove(temp_file.name)
     return transcription, segments, detected_language
 
 # def update_segments_with_language(words_segments, parent_start_frame, sampling_rate, detector, detected_language=None):
