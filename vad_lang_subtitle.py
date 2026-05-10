@@ -24,6 +24,13 @@ import traceback
 WORD_TIMESTAMPS_ENABLED = True
 
 
+def env_flag(name, default=None):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 def resolve_whisper_device():
     requested = (os.getenv("LAZYEDIT_WHISPER_DEVICE") or "auto").strip().lower()
     if requested not in ("", "auto"):
@@ -97,6 +104,31 @@ def is_word_timestamps_runtime_error(exc):
         or "find_alignment" in message
         or "triton_ops.py" in message
     )
+
+
+def resolve_word_timestamps_enabled(whisper_device):
+    configured = env_flag("LAZYEDIT_WHISPER_WORD_TIMESTAMPS", None)
+    if configured is not None:
+        print(f"Whisper word_timestamps explicitly set to {configured}.")
+        return configured
+
+    if str(whisper_device).startswith("cuda"):
+        try:
+            import triton
+
+            major = int(str(getattr(triton, "__version__", "0")).split(".", 1)[0])
+        except Exception:
+            major = 0
+        if major >= 3:
+            print(
+                "Disabling Whisper word_timestamps on CUDA because this runtime uses "
+                "Triton >= 3, which is unstable with the installed openai-whisper "
+                "word-alignment CUDA path. Set LAZYEDIT_WHISPER_WORD_TIMESTAMPS=1 "
+                "to opt back in."
+            )
+            return False
+
+    return True
 
 
 def normalize_whisper_segments(segments):
@@ -1455,11 +1487,13 @@ if __name__ == "__main__":
                 read_audio_fn = read_audio_compat
             # Load Whisper model for language detection and transcription
             whisper_device = resolve_whisper_device()
+            WORD_TIMESTAMPS_ENABLED = resolve_word_timestamps_enabled(whisper_device)
             print(
                 f"Loading Whisper model '{model_name}' on {whisper_device} "
                 f"(CUDA_VISIBLE_DEVICES={os.getenv('CUDA_VISIBLE_DEVICES')}, "
                 f"cuda_available={torch.cuda.is_available()}, "
-                f"device_count={torch.cuda.device_count()})"
+                f"device_count={torch.cuda.device_count()}, "
+                f"word_timestamps={WORD_TIMESTAMPS_ENABLED})"
             )
             whisper_model = whisper.load_model(model_name, device=whisper_device)
             print(f"Whisper model loaded on {whisper_model.device}")
