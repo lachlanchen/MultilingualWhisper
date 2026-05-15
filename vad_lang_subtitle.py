@@ -96,6 +96,49 @@ def save_audio_compat(path, tensor, sampling_rate=16000):
     sf.write(path, wav_np, sampling_rate)
 
 
+def load_silero_vad():
+    """Load Silero VAD from the local torch hub cache before trying the network."""
+    candidates = []
+    for env_name in ("LAZYEDIT_SILERO_VAD_REPO", "SILERO_VAD_REPO"):
+        value = os.getenv(env_name)
+        if value:
+            candidates.append(value)
+
+    try:
+        hub_dir = torch.hub.get_dir()
+        candidates.extend(
+            [
+                os.path.join(hub_dir, "snakers4_silero-vad_master"),
+                os.path.join(hub_dir, "snakers4_silero-vad_main"),
+            ]
+        )
+    except Exception:
+        pass
+
+    seen = set()
+    for repo_dir in candidates:
+        repo_dir = os.path.abspath(os.path.expanduser(str(repo_dir)))
+        if repo_dir in seen:
+            continue
+        seen.add(repo_dir)
+        hubconf = os.path.join(repo_dir, "hubconf.py")
+        if not os.path.exists(hubconf):
+            continue
+        try:
+            print(f"Loading Silero VAD from local cache: {repo_dir}")
+            return torch.hub.load(
+                repo_or_dir=repo_dir,
+                model="silero_vad",
+                source="local",
+                force_reload=False,
+            )
+        except Exception as exc:
+            print(f"Local Silero VAD load failed from {repo_dir}: {exc}")
+
+    print("Local Silero VAD cache not available; falling back to torch hub network load.")
+    return torch.hub.load(repo_or_dir="snakers4/silero-vad", model="silero_vad", force_reload=False)
+
+
 def is_word_timestamps_runtime_error(exc):
     message = str(exc)
     return (
@@ -1474,7 +1517,7 @@ if __name__ == "__main__":
             torch.set_num_threads(1)
 
             # Load the Silero VAD model
-            model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=False)
+            model, utils = load_silero_vad()
             # model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=True)
             (get_speech_timestamps, _, silero_read_audio, *_) = utils
             if hasattr(torchaudio, "list_audio_backends"):
