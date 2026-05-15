@@ -31,6 +31,48 @@ def env_flag(name, default=None):
     return value.strip().lower() in ("1", "true", "yes", "on")
 
 
+def env_float(name, default):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except Exception:
+        print(f"Invalid {name}={value!r}; using {default}.")
+        return default
+
+
+def env_int(name, default):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except Exception:
+        print(f"Invalid {name}={value!r}; using {default}.")
+        return default
+
+
+def resolve_silero_vad_options():
+    options = {
+        "threshold": min(max(env_float("LAZYEDIT_SILERO_VAD_THRESHOLD", 0.35), 0.05), 0.95),
+        "min_speech_duration_ms": max(0, env_int("LAZYEDIT_SILERO_MIN_SPEECH_MS", 120)),
+        "min_silence_duration_ms": max(0, env_int("LAZYEDIT_SILERO_MIN_SILENCE_MS", 250)),
+        "speech_pad_ms": max(0, env_int("LAZYEDIT_SILERO_SPEECH_PAD_MS", 120)),
+    }
+    print(f"Silero VAD options: {options}")
+    return options
+
+
+def resolve_lingua_languages():
+    languages = [Language.ENGLISH, Language.CHINESE, Language.JAPANESE, Language.ARABIC]
+    for language_name in ("KOREAN", "VIETNAMESE", "SPANISH", "FRENCH"):
+        language = getattr(Language, language_name, None)
+        if language is not None:
+            languages.append(language)
+    return languages
+
+
 def resolve_whisper_device():
     requested = (os.getenv("LAZYEDIT_WHISPER_DEVICE") or "auto").strip().lower()
     if requested not in ("", "auto"):
@@ -203,12 +245,16 @@ def detect_language_with_lingua(text, detector):
     Detects the language of a given text using Lingua.
     Returns the ISO 639-1 code of the detected language if detection is confident; otherwise, returns None.
     """
+    if not (text or "").strip():
+        return None
     try:
         language = detector.detect_language_of(text)
+        if language is None or language.iso_code_639_1 is None:
+            return None
         return language.iso_code_639_1.name.lower()  # Use .name to get the ISO code as a string
     except Exception as e:
         print(f"Language detection failed: {e}")
-        return 'und'
+        return None
 
 def adjust_timestamps(speech_timestamps, audio_length=None):
     """
@@ -458,9 +504,12 @@ def filter_segments(segments):
 
 def detect_segment_language(segment_text, detected_language, detector):
     text_language = detect_language_with_lingua(segment_text, detector)  # Language detection
-        
+
     # Determine segment language, considering special cases
-    segment_language = text_language if detected_language != "yue" or text_language != "zh" else "yue"
+    fallback_language = (detected_language or "").strip().lower() or "und"
+    if fallback_language == "yue" and text_language == "zh":
+        return "yue"
+    segment_language = text_language or fallback_language
 
     return segment_language
 
@@ -1507,7 +1556,7 @@ if __name__ == "__main__":
 
         try:
             # Initialize the Lingua language detector with specified languages
-            languages = [Language.ENGLISH, Language.CHINESE, Language.JAPANESE, Language.ARABIC]  # Adjust languages as needed
+            languages = resolve_lingua_languages()
             detector = LanguageDetectorBuilder.from_languages(*languages)\
                 .with_minimum_relative_distance(0.9)\
                 .build()
@@ -1565,7 +1614,12 @@ if __name__ == "__main__":
                 wav = read_audio_compat(audio_path, sampling_rate=sampling_rate)
 
             # Get speech timestamps from the audio file using Silero VAD
-            speech_timestamps = get_speech_timestamps(wav, model, sampling_rate=sampling_rate)
+            speech_timestamps = get_speech_timestamps(
+                wav,
+                model,
+                sampling_rate=sampling_rate,
+                **resolve_silero_vad_options(),
+            )
             audio_length = len(wav)
 
             adjust_timestamps(speech_timestamps, audio_length)
